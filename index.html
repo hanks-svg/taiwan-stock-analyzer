@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台股分析儀 V5</title>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080d08;color:#bfcfbf;font-family:'Noto Sans TC',sans-serif;font-size:14px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#0d140d}::-webkit-scrollbar-thumb{background:#253525;border-radius:2px}
+.mono{font-family:'DM Mono',monospace}.up{color:#34d399}.dn{color:#f87171}.warn{color:#fbbf24}
+.hdr{background:#0b120b;border-bottom:1px solid #182818;padding:10px 15px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.hdr-logo{font-size:15px;font-weight:700;color:#4dd87a;font-family:'DM Mono',monospace}
+.hdr-sub{font-size:9px;color:#3a5a3a;letter-spacing:.1em;margin-top:2px}
+.tabs{display:flex;gap:1px;background:#0b120b;padding:4px 10px;border-bottom:1px solid #182818;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:52px;z-index:99}
+.tab{padding:5px 11px;border-radius:4px;cursor:pointer;font-size:11px;color:#4a6a4a;border:none;background:none;white-space:nowrap;font-family:'Noto Sans TC',sans-serif}
+.tab.on{color:#4dd87a;background:#132013;font-weight:500}
+.tab:hover{color:#7a9a7a;background:#121f12}
+.tbadge{display:inline-block;background:#f87171;color:#fff;border-radius:99px;font-size:9px;padding:0 4px;margin-left:2px;font-family:'DM Mono',monospace;vertical-align:middle}
+.body{padding:12px 14px;max-width:960px;margin:0 auto}
+.sec{font-size:10px;letter-spacing:.13em;color:#3a5a3a;text-transform:uppercase;margin-bottom:10px}
+.card{background:#0b120b;border:1px solid #182818;border-radius:7px;padding:12px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #101810}
+.row:last-child{border-bottom:none}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;margin:1px}
+.bsec{background:#112011;color:#3a7a3a;border:1px solid #1a3a1a}
+.btag{background:#0e180e;color:#2a6a2a;border:1px solid #162816}
+.btn{padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px;border:none;font-family:'Noto Sans TC',sans-serif}
+.bpri{background:#152515;color:#4dd87a;border:1px solid #254525}
+.bdgr{background:#251010;color:#f87171;border:1px solid #451515}
+.bgho{background:none;color:#4a6a4a;border:1px solid #182818}
+.inp{background:#080d08;border:1px solid #182818;border-radius:4px;padding:5px 8px;color:#bfcfbf;font-size:12px;outline:none;font-family:'Noto Sans TC',sans-serif}
+.inp:focus{border-color:#254525}
+.mggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-top:8px}
+.mgcell{background:#090e09;border:1px solid #162016;border-radius:5px;padding:8px 10px}
+.mglbl{font-size:10px;color:#3a5a3a;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.mgval{font-size:14px;font-family:'DM Mono',monospace;color:#bfcfbf}
+.mgnote{font-size:10px;color:#4a6a4a;margin-top:3px}
+.risk{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;margin-bottom:5px}
+.rdanger{background:#1a0a0a;border:1px solid #451515}
+.rwarn{background:#191300;border:1px solid #3a2a00}
+.rinfo{background:#00101a;border:1px solid #003050}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ddanger{background:#f87171;box-shadow:0 0 5px #f87171}
+.dwarn{background:#fbbf24;box-shadow:0 0 5px #fbbf24}
+.dinfo{background:#60a5fa;box-shadow:0 0 5px #60a5fa}
+.sflex{display:flex;gap:5px;flex-wrap:wrap}
+.disc{margin-top:14px;padding:8px 11px;background:#0b120b;border:1px solid #182818;border-radius:5px;font-size:10px;color:#3a5a3a;line-height:1.9}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:#3a5a3a;text-align:left;padding:6px 8px;border-bottom:1px solid #182818}
+td{padding:6px 8px;font-size:12px;border-bottom:1px solid #0e150e}
+tr:last-child td{border-bottom:none}
+.sumcard{background:#0b120b;border:1px solid #182818;border-radius:6px;padding:9px;text-align:center}
+.sumlbl{font-size:9px;color:#3a5a3a;margin-bottom:3px}
+.sumval{font-size:14px;font-family:'DM Mono',monospace}
+select.inp option{background:#0b120b;color:#bfcfbf}
+.note{width:100%;background:#090f09;border:1px solid #162016;border-radius:4px;color:#6a9a6a;font-size:12px;padding:8px;font-family:'Noto Sans TC',sans-serif;resize:vertical;outline:none;min-height:60px}
+.empty{color:#253525;font-size:13px;padding:14px 0;text-align:center}
+.compare-col{background:#090f09;border:1px solid #162016;border-radius:6px;padding:10px;flex:1;min-width:130px}
+.factor-bar{height:6px;border-radius:3px;background:#1a2a1a;margin-top:4px;overflow:hidden}
+.factor-fill{height:100%;border-radius:3px}
+@media(max-width:600px){.mggrid{grid-template-columns:repeat(2,1fr)}}
+.v6b{display:inline-block;background:#1a1a3a;color:#818cf8;border-radius:99px;font-size:8px;padding:1px 5px;margin-left:3px;border:1px solid #2d2d6b;vertical-align:middle}
+.bv6{background:#1a1a3a;color:#818cf8;border:1px solid #2d2d6b}
+.bv6:hover{background:#252550}
+.card-v6{background:#09090f;border:1px solid #1e1e3a;border-radius:7px;padding:12px;margin-bottom:10px}
+.wealth-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #101018;font-size:12px}
+.wealth-row:last-child{border-bottom:none}
+.progress-bar{height:8px;border-radius:4px;background:#1a1a2a;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.fac-card{background:#09090f;border:1px solid #1e1e3a;border-radius:6px;padding:10px;margin-bottom:8px;cursor:pointer}
+.fac-card.active{border-color:#818cf8}
+.advisor-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:500px){.advisor-form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ── 等 React 載入後再執行 ──────────────────────────
+window.addEventListener('load', function() {
+  if (!window.React || !window.ReactDOM) {
+    document.getElementById('root').innerHTML = '<div style="color:#f87171;padding:20px">React 載入失敗，請重新整理</div>';
+    return;
+  }
+  initApp();
+});
+
+function initApp() {
+var h = React.createElement;
+var useState = React.useState;
+var useEffect = React.useEffect;
+
+// ── 資料 ──────────────────────────────────────────
+var PROXY = 'https://taiwan-stock-proxy.onrender.com';
+
+// 預熱：頁面載入時立即呼叫一次，讓 Render 從睡眠中醒來
+// 這樣使用者真正查股票時就不用等 50 秒
+(function preheat() {
+  fetch(PROXY + '/').catch(function(){});
+  // 10 秒後再呼叫一次確保已醒
+  setTimeout(function(){ fetch(PROXY + '/').catch(function(){}); }, 10000);
+})();
+
+var STOCKS = {
+  '2330':{name:'台積電',sector:'半導體',tags:['權值股','AI受惠'],market_cap:'24.5兆',pe:22.4,pb:6.8,roe:28.5,eps:42.2,divYield:1.8,revenue_growth:28.3,gross_margin:53.1,debt_ratio:28.2,week52High:1080,week52Low:680},
+  '2454':{name:'聯發科',sector:'半導體',tags:['AI晶片'],market_cap:'2.03兆',pe:18.6,pb:4.2,roe:24.1,eps:69.1,divYield:2.4,revenue_growth:15.2,gross_margin:47.8,debt_ratio:22.5,week52High:1450,week52Low:880},
+  '2412':{name:'中華電',sector:'電信',tags:['高殖利率','防禦型'],market_cap:'3,321億',pe:24.1,pb:2.1,roe:8.8,eps:5.33,divYield:4.7,revenue_growth:2.1,gross_margin:62.4,debt_ratio:45.1,week52High:135,week52Low:122},
+  '0050':{name:'元大台灣50',sector:'ETF',tags:['分散風險'],market_cap:'3,420億',pe:19.2,pb:2.8,roe:null,eps:null,divYield:3.2,revenue_growth:null,gross_margin:null,debt_ratio:null,week52High:210,week52Low:152},
+  '006208':{name:'富邦台50',sector:'ETF',tags:['低費率'],market_cap:'1,180億',pe:19.0,pb:2.7,roe:null,eps:null,divYield:3.4,revenue_growth:null,gross_margin:null,debt_ratio:null,week52High:112,week52Low:80},
+  '2317':{name:'鴻海',sector:'電子代工',tags:['權值股','AI伺服器'],market_cap:'1.57兆',pe:12.1,pb:1.8,roe:11.2,eps:9.18,divYield:4.2,revenue_growth:8.5,gross_margin:6.2,debt_ratio:55.3,week52High:118,week52Low:88},
+  '2308':{name:'台達電',sector:'電源元件',tags:['EV','AI電源'],market_cap:'5,820億',pe:28.3,pb:5.1,roe:18.5,eps:12.8,divYield:3.1,revenue_growth:12.4,gross_margin:32.1,debt_ratio:38.2,week52High:48,week52Low:32},
+};
+
+var CANDLES = {
+  '2330':[[885,886.5,876.8,877.8,33233],[874.1,875.1,865.4,870.3,67444],[872.1,872.3,864.8,866.5,42446],[861.5,866.8,858.7,858.9,49772],[856.4,862.1,852,858.7,56484],[859.1,861.3,855.7,859.5,83765],[863.9,871.9,863.6,870.6,36521],[874,882.9,869.9,880,51824],[885.1,889.2,877.3,883,86194],[879.3,883.7,876.6,877.1,26908],[877.9,881.9,874.9,879.3,44650],[883.3,887.5,873.7,879.6,84513],[884.2,892.3,880.3,890.5,30469],[891.9,894.4,880.5,885.1,87275],[881,883.9,878,883,62645],[879.2,885.3,873.7,878.2,85232],[874.2,877,868.7,871.3,69732],[869.7,875.9,858.5,865,40297],[860.9,866.7,858.6,865.2,84129],[863.5,874.3,858.7,867.7,76352],[863.6,871.2,859.9,868.2,58695],[869.4,870.6,864.5,867,30127],[869.4,876.2,863.2,866.8,24285],[869.2,871.4,862.2,865.2,30735],[862.3,864.9,855.4,858.3,82262],[862.1,864.4,861.2,862.5,53196],[859.3,865.1,853,861.5,35152],[857.2,867.7,855.7,862,83093],[859.9,863.4,855.1,858.2,83994],[862.2,867.6,861.9,866.3,43053]],
+  '2454':[[1048,1055.4,1042.5,1045,80612],[1040.6,1054,1036.7,1047,63142],[1045.4,1048.5,1029.8,1036.6,39598],[1039.4,1039.8,1031.5,1035.1,20012],[1038.4,1054.2,1037.2,1046,36041],[1047.1,1056.5,1043.8,1051.1,32593],[1048.9,1056.8,1046.5,1055.5,31912],[1053.7,1061.5,1048.6,1058.7,61772],[1061.2,1064.2,1056.3,1057.7,44435],[1054.8,1061.3,1051.3,1058.6,77712],[1055.7,1066.4,1048.8,1059.3,25921],[1058.3,1066.4,1052.1,1061,50143],[1065.6,1077.6,1058.7,1073.4,30253],[1072.5,1082,1065.3,1077.4,42459],[1077.3,1078.7,1066.9,1073,63364],[1073.1,1077.3,1072.7,1075.2,69444],[1073.4,1077,1073.4,1075.1,75194],[1076.8,1088.5,1069.1,1080.9,68656],[1084.6,1091.7,1082.4,1083.3,30313],[1084.2,1097.1,1080.2,1089.6,49820],[1096,1102.9,1092.9,1093.1,55989],[1094,1094.8,1085,1093,91777],[1087.6,1090.9,1079.4,1087.8,90346],[1094,1102.5,1085,1087.6,53199],[1090.6,1100.8,1087,1099.2,53324],[1095.7,1099.9,1082.7,1089.3,50015],[1091.5,1097.5,1081.9,1082.5,80151],[1077.1,1077.2,1062.7,1069.5,81879],[1064.1,1064.2,1057.7,1062.5,61781],[1068.4,1077,1062.3,1069.2,56682]],
+  '2412':[[123.6,124.4,123.2,123.4,77306],[123.8,125.1,123.3,124.8,80035],[124.5,125.6,123.6,125.6,98626],[125.5,126.3,123.6,124.5,79585],[124.1,124.4,123.2,123.5,73525],[123.6,124.2,122.8,124.2,27550],[124.7,125.3,123.6,123.7,50937],[124.4,124.6,123.7,123.7,68444],[123.7,124.1,123.4,123.7,80475],[124.1,124.2,122.5,123.4,24664],[123.8,124.2,122.6,123.2,66220],[123.8,124.9,122.9,124.6,37662],[124.8,126.6,124.3,125.9,52678],[125.9,126.5,124.4,125,43364],[125.2,125.7,123.9,124.3,61041],[123.7,125,123.6,124.6,52269],[125.3,126.2,124.5,125.2,37007],[125.4,126.4,124.5,124.8,28844],[124.3,125.7,124.1,125,48041],[125.6,126.1,124.5,124.8,67756],[124.7,125.7,124.6,125.4,62767],[124.8,125.4,124,124.4,66780],[124.5,125.3,123.4,124,22165],[124.1,124.9,123.2,123.6,71848],[123.8,124.7,122.7,123.7,71748],[123.6,124.3,122.4,123,69411],[123.4,124.6,123.2,123.7,84650],[123.5,124.3,122.4,122.7,31283],[122.9,123.7,122,122.5,84467],[123.1,124.3,122.4,123.8,37070]],
+  '0050':[[169.6,170.2,169.1,169.3,81673],[168.8,169.7,167.8,169.4,48023],[169.6,171.5,168.9,170.9,45220],[171.4,172.6,170,172.4,34100],[172.2,173.3,171.5,172.7,90637],[173.7,174.9,172.2,172.4,63597],[172.8,173.8,171.7,173.6,43229],[173.4,175.7,172.3,174.4,93456],[174.6,176.3,173.8,174.9,81444],[175.7,177,173.8,174.3,62859],[174.8,176,174.7,175.2,22396],[174.7,174.9,173.1,174.1,76443],[174.4,174.9,172.5,173,89350],[173.5,174.8,172.2,173.1,30435],[172.6,173.6,170.6,171.2,81410],[170.9,172.1,169.9,171.1,85120],[171.8,173.9,171.7,173.3,78706],[172.9,173.9,172.4,173.4,44362],[172.4,172.4,171.5,171.7,47485],[172.2,173.1,171.9,172,37462],[172,174,171.3,172.9,72864],[173.2,175.3,173,174.8,90886],[174.1,175.7,173.5,174.6,96144],[174.2,175.6,173.2,175.5,38696],[175.6,177.4,174.9,176.5,87127],[176.1,176.3,174.2,175.6,58815],[176.4,178,176.2,177.6,20735],[178.1,179.5,177.6,178.9,99859],[180,181.3,177.9,179.2,47497],[179.7,179.9,178.7,179,33056]],
+  '006208':[[90,90.4,89.8,89.8,60914],[89.4,90.4,88.7,90.1,61632],[89.7,89.8,89.2,89.5,24154],[89.3,90.7,89.2,90.1,63280],[90.2,90.7,90.1,90.1,64916],[90.2,90.3,89.6,89.7,96057],[90.2,91.3,89.8,90.8,70565],[91.1,92.2,90.7,91.8,85315],[91.3,92.8,90.9,92.1,73337],[92,92.7,91.9,92.5,47168],[92.4,93.1,91.7,92.1,53759],[92.5,92.8,91.2,92,63853],[91.8,93.1,91.8,92.6,73037],[92.8,93.4,92,92.6,64623],[92.4,93.4,92,93.2,92072],[93.6,94.2,92.8,92.9,37306],[92.7,93.4,92.6,93.3,20391],[93,93.5,92.7,93.1,92584],[93.3,93.7,92.7,93.5,68752],[94.1,95.3,93.4,94.7,33062],[94.7,95.2,94.1,94.2,23497],[93.8,94.8,93.2,94.3,64171],[94.7,95.4,93.4,93.9,42475],[93.8,94.4,93.4,93.6,44966],[93.8,94.9,93.8,94.5,82762],[94.4,95.5,94.4,95,42909],[94.8,95.6,94.6,95.4,36817],[95.6,96.7,95.3,96.2,37395],[96.1,96.7,95.3,95.6,22196],[96,97,96,96.3,36953]],
+  '2317':[[100.5,101.2,99.8,100.2,120000],[99.8,101,99.5,100.8,98000],[101,102.5,100.5,102,110000],[102.2,103,101.5,102.5,95000],[102,103.5,101.8,103.2,105000],[103,104,102.5,103.5,88000],[103.2,104.2,102.8,104,92000],[104.1,105,103.5,104.5,115000],[104.3,105.2,103.8,104.8,88000],[104.5,105.5,104,105.2,97000],[105,106,104.5,105.5,102000],[105.3,106.2,104.8,105.8,88000],[105.5,106.5,105,106,95000],[106,107,105.5,106.5,110000],[106.3,107.2,105.8,106.8,92000],[106.5,107.5,106,107.2,85000],[107,108,106.5,107.5,98000],[107.2,108.2,106.8,107.8,88000],[107.5,108.5,107,108.2,92000],[108,109,107.5,108.5,105000],[108.2,109.2,107.8,108.8,88000],[108.5,109.5,108,109.2,95000],[109,110,108.5,109.5,102000],[109.2,110.2,108.8,109.8,88000],[109.5,110.5,109,110.2,92000],[110,111,109.5,110.5,105000],[110.2,111.2,109.8,110.8,88000],[110.5,111.5,110,111.2,95000],[111,112,110.5,111.5,102000],[111.2,112.2,110.8,111.8,88000]],
+  '2308':[[42,42.5,41.5,42,85000],[41.8,42.3,41.3,41.8,78000],[41.5,42,41,41.5,92000],[41.2,41.8,40.8,41.2,88000],[41,41.5,40.5,41,95000],[40.8,41.3,40.3,40.8,82000],[40.5,41,40,40.5,88000],[40.2,40.8,39.8,40.2,92000],[40,40.5,39.5,40,85000],[39.8,40.3,39.3,39.8,78000],[39.5,40,39,39.5,88000],[39.2,39.8,38.8,39.2,92000],[39,39.5,38.5,39,85000],[38.8,39.3,38.3,38.8,78000],[38.5,39,38,38.5,92000],[38.2,38.8,37.8,38.2,88000],[38,38.5,37.5,38,95000],[37.8,38.3,37.3,37.8,82000],[37.5,38,37,37.5,88000],[37.2,37.8,36.8,37.2,92000],[37,37.5,36.5,37,85000],[36.8,37.3,36.3,36.8,78000],[36.5,37,36,36.5,88000],[36.2,36.8,35.8,36.2,92000],[36,36.5,35.5,36,85000],[35.8,36.3,35.3,35.8,78000],[35.5,36,35,35.5,88000],[35.2,35.8,34.8,35.2,92000],[35,35.5,34.5,35,85000],[34.8,35.3,34.3,34.8,78000]],
+};
+
+var RISK_RULES = [
+  {id:'high_pe',label:'本益比偏高(>30)',check:function(s){return s.pe&&s.pe>30},level:'danger'},
+  {id:'low_roe',label:'ROE偏低(<8%)',check:function(s){return s.roe&&s.roe<8},level:'warn'},
+  {id:'high_debt',label:'負債比率高(>60%)',check:function(s){return s.debt_ratio&&s.debt_ratio>60},level:'danger'},
+  {id:'near_low',label:'接近52週低點',check:function(s,p){return p<=s.week52Low*1.05},level:'warn'},
+  {id:'near_high',label:'接近52週高點',check:function(s,p){return p>=s.week52High*0.97},level:'info'},
+  {id:'neg_growth',label:'營收負成長',check:function(s){return s.revenue_growth!=null&&s.revenue_growth<0},level:'warn'},
+];
+
+var METRICS = [
+  {key:'pe',label:'本益比',suffix:'x',good:function(v){return v<15},warn:function(v){return v>30},note:function(v){return v>30?'偏高':v<15?'偏低':''}},
+  {key:'pb',label:'股價淨值比',suffix:'x',good:function(v){return v<1.5},warn:function(v){return v>4},note:function(){return ''}},
+  {key:'roe',label:'ROE',suffix:'%',good:function(v){return v>15},warn:function(v){return v<8},note:function(v){return v>20?'優質':''}},
+  {key:'gross_margin',label:'毛利率',suffix:'%',good:function(v){return v>40},warn:function(v){return v<20},note:function(v){return v>50?'護城河強':''}},
+  {key:'revenue_growth',label:'營收成長',suffix:'%',good:function(v){return v>15},warn:function(v){return v<0},note:function(v){return v<0?'衰退':''}},
+  {key:'debt_ratio',label:'負債比率',suffix:'%',good:function(v){return v<30},warn:function(v){return v>60},note:function(){return ''}},
+  {key:'divYield',label:'殖利率',suffix:'%',good:function(v){return v>4},warn:function(v){return v<1.5},note:function(v){return v>4?'存股標的':''}},
+  {key:'eps',label:'EPS',suffix:'元',good:function(v){return v>10},warn:function(v){return v<=0},note:function(){return ''}},
+];
+
+// ── 工具函式 ──────────────────────────────────────
+var apiCache = {};
+function apiFetch(path) {
+  if (apiCache[path] && Date.now()-apiCache[path].t < 60000) return Promise.resolve(apiCache[path].d);
+  return fetch(PROXY+path).then(function(r){return r.json();}).then(function(d){
+    apiCache[path]={d:d,t:Date.now()}; return d;
+  }).catch(function(){return null;});
+}
+
+function calcScore(code) {
+  var s=STOCKS[code]; if(!s) return 50;
+  if(s.sector==='ETF') return 72;
+  var sc=50;
+  if(s.roe>20)sc+=15; else if(s.roe>12)sc+=8; else if(s.roe<8)sc-=10;
+  if(s.pe<15)sc+=10; else if(s.pe<25)sc+=5; else if(s.pe>35)sc-=10;
+  if(s.gross_margin>50)sc+=10; else if(s.gross_margin>30)sc+=5;
+  if(s.revenue_growth>20)sc+=10; else if(s.revenue_growth>5)sc+=5; else if(s.revenue_growth<0)sc-=8;
+  if(s.debt_ratio<30)sc+=5; else if(s.debt_ratio>60)sc-=8;
+  if(s.divYield>4)sc+=5;
+  return Math.max(0,Math.min(100,sc));
+}
+
+function calcMA(closes,n) {
+  return closes.map(function(_,i){
+    if(i<n-1) return null;
+    var sum=0; for(var j=i-n+1;j<=i;j++) sum+=closes[j];
+    return +(sum/n).toFixed(1);
+  });
+}
+
+var LS = {
+  get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}},
+  set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+};
+
+// ── 元件 ──────────────────────────────────────────
+function ScoreRing(props) {
+  var sc=props.sc, size=props.size||50;
+  var r=size*.38, circ=2*Math.PI*r, fill=(sc/100)*circ;
+  var c=sc>=75?'#34d399':sc>=55?'#fbbf24':'#f87171';
+  return h('svg',{width:size,height:size},
+    h('circle',{cx:size/2,cy:size/2,r:r,fill:'none',stroke:'#1e2a1e',strokeWidth:size*.095}),
+    h('circle',{cx:size/2,cy:size/2,r:r,fill:'none',stroke:c,strokeWidth:size*.095,
+      strokeDasharray:fill+' '+circ,strokeLinecap:'round',
+      transform:'rotate(-90 '+(size/2)+' '+(size/2)+')'}),
+    h('text',{x:size/2,y:size/2+5,textAnchor:'middle',fill:c,
+      style:{fontSize:size*.25,fontWeight:700,fontFamily:"'DM Mono',monospace"}},sc)
+  );
+}
+
+function Light(props) {
+  var color=props.color;
+  var m={green:['#34d399','rgba(52,211,153,0.1)','良好'],yellow:['#fbbf24','rgba(251,191,36,0.1)','普通'],red:['#f87171','rgba(248,113,113,0.1)','注意'],gray:['#6a8a6a','rgba(100,130,100,0.08)','N/A']};
+  var arr=m[color]||m.gray, c=arr[0], bg=arr[1], lbl=arr[2];
+  return h('span',{style:{display:'inline-flex',alignItems:'center',gap:3,padding:'1px 6px',borderRadius:3,background:bg,fontSize:10}},
+    h('span',{style:{width:6,height:6,borderRadius:'50%',background:c,boxShadow:'0 0 4px '+c,display:'inline-block'}}),
+    h('span',{style:{color:c}},lbl)
+  );
+}
+
+function Sparkline(props) {
+  var code=props.code;
+  var d=(CANDLES[code]||[]).map(function(c){return c[3];});
+  if(!d.length) return null;
+  var w=68,ht=24,min=Math.min.apply(null,d),max=Math.max.apply(null,d);
+  var pts=d.map(function(v,i){return (i/(d.length-1))*w+','+(ht-((v-min)/(max-min||1))*ht);}).join(' ');
+  var pos=d[d.length-1]>=d[0];
+  return h('svg',{width:w,height:ht,style:{overflow:'visible'}},
+    h('polyline',{points:pts,fill:'none',stroke:pos?'#34d399':'#f87171',strokeWidth:'1.5',strokeLinejoin:'round'})
+  );
+}
+
+function CandleChart(props) {
+  var code=props.code, candles=props.candles||CANDLES[code]||[];
+  var W=520,H=175,VH=34,PL=42,PR=8,PT=7,PB=2;
+  var cw=Math.max(4,Math.floor((W-PL-PR)/candles.length)-1);
+  var closes=candles.map(function(c){return c[3];});
+  var ma5=calcMA(closes,5), ma20=calcMA(closes,20);
+  var ap=[]; candles.forEach(function(c){ap.push(c[1],c[2]);});
+  var minP=Math.min.apply(null,ap), maxP=Math.max.apply(null,ap);
+  var maxV=Math.max.apply(null,candles.map(function(c){return c[4];}));
+  function py(v){return PT+((maxP-v)/(maxP-minP||1))*(H-PT-PB);}
+  function px(i){return PL+i*((W-PL-PR)/candles.length)+(W-PL-PR)/candles.length/2;}
+  var maLines=[];
+  [[ma5,'#fbbf24'],[ma20,'#60a5fa']].forEach(function(pair){
+    var arr=pair[0],col=pair[1];
+    var pts=arr.map(function(v,i){return v!=null?(px(i)+','+py(v)):null;}).filter(function(x){return x!=null;});
+    if(pts.length>1) maLines.push(h('polyline',{key:col,points:pts.join(' '),fill:'none',stroke:col,strokeWidth:'1',opacity:'.85'}));
+  });
+  var pricelines=[minP,(minP+maxP)/2,maxP].map(function(v){
+    return h('g',{key:v},
+      h('line',{x1:PL,x2:W-PR,y1:py(v),y2:py(v),stroke:'#1a2a1a',strokeWidth:'1'}),
+      h('text',{x:PL-3,y:py(v)+4,textAnchor:'end',fill:'#3a5a3a',fontSize:'9'},+v.toFixed(0))
+    );
+  });
+  var bars=candles.map(function(c,i){
+    var o=c[0],hi2=c[1],lo=c[2],cl=c[3]; var up=cl>=o; var col=up?'#34d399':'#f87171';
+    var bt=py(Math.max(o,cl)), bb=py(Math.min(o,cl));
+    return h('g',{key:i},
+      h('line',{x1:px(i),x2:px(i),y1:py(hi2),y2:py(lo),stroke:col,strokeWidth:'1'}),
+      h('rect',{x:px(i)-cw/2,y:bt,width:cw,height:Math.max(1,bb-bt),fill:col,opacity:'.85'})
+    );
+  });
+  var vols=candles.map(function(c,i){
+    return h('rect',{key:'v'+i,x:px(i)-cw/2,y:H+4+VH*.1+(1-c[4]/maxV)*VH*.9,width:cw,
+      height:Math.max(1,(c[4]/maxV)*VH*.9),fill:c[3]>=c[0]?'rgba(52,211,153,.35)':'rgba(248,113,113,.35)'});
+  });
+  return h('div',{style:{overflowX:'auto'}},
+    h('svg',{width:W,height:H+VH+4,style:{display:'block',minWidth:W}},
+      pricelines, bars, maLines,
+      h('rect',{x:PL,y:2,width:6,height:3,fill:'#fbbf24'}),
+      h('text',{x:PL+9,y:9,fill:'#fbbf24',fontSize:'9'},'MA5'),
+      h('rect',{x:PL+36,y:2,width:6,height:3,fill:'#60a5fa'}),
+      h('text',{x:PL+45,y:9,fill:'#60a5fa',fontSize:'9'},'MA20'),
+      vols
+    )
+  );
+}
+
+// ── 主應用 ────────────────────────────────────────
+function App() {
+  var tabState = useState(LS.get('tab')||'watchlist');
+  var tab=tabState[0], setTab=tabState[1];
+  var wlState = useState(function(){return LS.get('wl')||['2330','0050','2454','2412'];});
+  var watchlist=wlState[0], setWatchlist=wlState[1];
+  var pfState = useState(function(){return LS.get('pf')||[{code:'2330',shares:100,cost:820},{code:'0050',shares:500,cost:175},{code:'2412',shares:200,cost:128}];});
+  var portfolio=pfState[0], setPortfolio=pfState[1];
+  var notesState = useState(function(){return LS.get('notes')||{};});
+  var notes=notesState[0], setNotes=notesState[1];
+  var activeStockState = useState('2330');
+  var activeStock=activeStockState[0], setActiveStock=activeStockState[1];
+  var svState = useState('');
+  var sv=svState[0], setSv=svState[1];
+  var pfFormState = useState({code:'',shares:'',cost:''});
+  var pfForm=pfFormState[0], setPfForm=pfFormState[1];
+  var cmpAState = useState('2330');
+  var cmpA=cmpAState[0], setCmpA=cmpAState[1];
+  var cmpBState = useState('2454');
+  var cmpB=cmpBState[0], setCmpB=cmpBState[1];
+  var filtersState = useState({roe_min:'',yield_min:'',pe_max:'',eps_pos:false,rev_pos:false});
+  var filters=filtersState[0], setFilters=filtersState[1];
+  var fResState = useState(null);
+  var fRes=fResState[0], setFRes=fResState[1];
+  var sNameState = useState('');
+  var sName=sNameState[0], setSName=sNameState[1];
+  var savedFState = useState(function(){return LS.get('sf')||[];});
+  var savedF=savedFState[0], setSavedF=savedFState[1];
+  var priceCacheState = useState({});
+  var priceCache=priceCacheState[0], setPriceCache=priceCacheState[1];
+  var candleCacheState = useState({});
+  var candleCache=candleCacheState[0], setCandleCache=candleCacheState[1];
+  var searchingState = useState(false);
+  var searching=searchingState[0], setSearching=searchingState[1];
+  var btCodeState = useState('0050');
+  var btCode=btCodeState[0], setBtCode=btCodeState[1];
+  var btTypeState = useState('passive');
+  var btType=btTypeState[0], setBtType=btTypeState[1];
+  var btResState = useState(null);
+  var btRes=btResState[0], setBtRes=btResState[1];
+
+  // V6 AI 投資顧問
+  var advisorState = useState({age:'',income:'',assets:'',experience:'beginner',risk:'moderate',goal:'growth'});
+  var advisor=advisorState[0], setAdvisor=advisorState[1];
+  var advisorReportState = useState('');
+  var advisorApiKeyState = useState(function(){return LS.get('aak')||'';});
+  var advisorApiKey=advisorApiKeyState[0], setAdvisorApiKey=advisorApiKeyState[1];
+  var advisorReport=advisorReportState[0], setAdvisorReport=advisorReportState[1];
+  var advisorLoadingState = useState(false);
+  var advisorLoading=advisorLoadingState[0], setAdvisorLoading=advisorLoadingState[1];
+
+  // V6 財富中心
+  var wealthState = useState(function(){return LS.get('wealth')||{
+    stocks: [],
+    etf: [],
+    funds: [],
+    deposit: [{name:'定存',amount:0,rate:1.5}],
+    saving: [{name:'活存',amount:0,rate:0.1}],
+    insurance: [{name:'保險',amount:0}],
+    cash: 0,
+    other: [],
+    debt: 0,
+  };});
+  var wealth=wealthState[0], setWealth=wealthState[1];
+
+  // V6 策略工廠
+  var factoriesState = useState(function(){return LS.get('factories')||[
+    {id:'f1',name:'高股息策略',type:'income',status:'active',version:1,
+     conditions:{yield_min:4,pe_max:20,roe_min:8},
+     created:'2025-01',modified:'2025-01',backtests:0,winRate:null,annReturn:null,maxDD:null,note:''},
+    {id:'f2',name:'成長股策略',type:'growth',status:'active',version:1,
+     conditions:{roe_min:15,rev_growth:10,pe_max:30},
+     created:'2025-01',modified:'2025-01',backtests:0,winRate:null,annReturn:null,maxDD:null,note:''},
+  ];});
+  var factories=factoriesState[0], setFactories=factoriesState[1];
+  var selFactory = useState('f1');
+  var selFac=selFactory[0], setSelFac=selFactory[1];
+  var facFormState = useState(null);
+  var facForm=facFormState[0], setFacForm=facFormState[1];
+  var facEditState = useState(false);
+  var facEdit=facEditState[0], setFacEdit=facEditState[1];
+
+  useEffect(function(){LS.set('wl',watchlist);},[watchlist]);
+  useEffect(function(){LS.set('pf',portfolio);},[portfolio]);
+  useEffect(function(){LS.set('notes',notes);},[notes]);
+  useEffect(function(){LS.set('sf',savedF);},[savedF]);
+  useEffect(function(){LS.set('tab',tab);},[tab]);
+  useEffect(function(){LS.set('wealth',wealth);},[wealth]);
+  useEffect(function(){LS.set('factories',factories);},[factories]);
+  useEffect(function(){LS.set('aak',advisorApiKey);},[advisorApiKey]);
+
+  // 自選股載入即時價格
+  useEffect(function(){
+    watchlist.forEach(function(code){
+      if(!priceCache[code]) {
+        apiFetch('/api/price/'+code).then(function(d){
+          if(d&&!d.error) {
+            setPriceCache(function(p){var n=Object.assign({},p);n[code]={price:d.price,change:d.change,changePct:d.changePct};return n;});
+          }
+        });
+      }
+    });
+  },[watchlist]);
+
+  // 個股分析頁載入 K 線
+  useEffect(function(){
+    if(tab==='detail'&&activeStock) {
+      if(!candleCache[activeStock]) {
+        apiFetch('/api/candles/'+activeStock).then(function(d){
+          if(d&&d.candles&&d.candles.length) {
+            var cc=d.candles.map(function(c){return [c.open,c.high,c.low,c.close,c.volume];});
+            setCandleCache(function(p){var n=Object.assign({},p);n[activeStock]=cc;return n;});
+            CANDLES[activeStock]=cc;
+          }
+        });
+      }
+      if(!priceCache[activeStock]) {
+        apiFetch('/api/price/'+activeStock).then(function(d){
+          if(d&&!d.error) {
+            setPriceCache(function(p){var n=Object.assign({},p);n[activeStock]={price:d.price,change:d.change,changePct:d.changePct};return n;});
+          }
+        });
+      }
+    }
+  },[tab,activeStock]);
+
+  function gp(code) {
+    if(priceCache[code]) return priceCache[code];
+    var c=CANDLES[code]; if(!c) return null;
+    var l=c[c.length-1],p=c[c.length-2];
+    return {price:l[3],change:+(l[3]-p[3]).toFixed(1),changePct:+((l[3]-p[3])/p[3]*100).toFixed(2)};
+  }
+
+  function od(code){setActiveStock(code);setTab('detail');}
+  function addW(code){if(!watchlist.includes(code))setWatchlist(watchlist.concat([code]));}
+  function rmW(code){setWatchlist(watchlist.filter(function(x){return x!==code;}));}
+  function addPf(){
+    var code=pfForm.code,shares=pfForm.shares,cost=pfForm.cost;
+    if(!STOCKS[code]||!shares||!cost) return;
+    setPortfolio(portfolio.concat([{code:code,shares:+shares,cost:+cost}]));
+    setPfForm({code:'',shares:'',cost:''});
+  }
+  function rmPf(i){setPortfolio(portfolio.filter(function(_,j){return j!==i;}));}
+
+  function handleSearch() {
+    var k=sv.trim().toUpperCase();
+    if(STOCKS[k]){od(k);setSv('');return;}
+    setSearching(true);
+    apiFetch('/api/search/'+sv.trim()).then(function(d){
+      setSearching(false);
+      if(d&&d.results&&d.results.length){
+        var first=d.results[0];
+        if(!STOCKS[first.code]){
+          STOCKS[first.code]={name:first.name||first.code,sector:first.type||'其他',tags:[],market_cap:'-',
+            pe:null,pb:null,roe:null,eps:null,divYield:null,revenue_growth:null,gross_margin:null,debt_ratio:null,week52High:0,week52Low:0};
+        }
+        apiFetch('/api/price/'+first.code).then(function(pd){
+          if(pd&&!pd.error){
+            setPriceCache(function(p){var n=Object.assign({},p);n[first.code]={price:pd.price,change:pd.change,changePct:pd.changePct};return n;});
+            if(!watchlist.includes(first.code)) addW(first.code);
+          }
+        });
+        setSv(''); od(first.code);
+      } else {
+        apiFetch('/api/price/'+k).then(function(pd){
+          if(pd&&!pd.error){
+            if(!STOCKS[k]) STOCKS[k]={name:k,sector:'其他',tags:[],market_cap:'-',pe:null,pb:null,roe:null,eps:null,divYield:null,revenue_growth:null,gross_margin:null,debt_ratio:null,week52High:pd.week52High||0,week52Low:pd.week52Low||0};
+            setPriceCache(function(p){var n=Object.assign({},p);n[k]={price:pd.price,change:pd.change,changePct:pd.changePct};return n;});
+            setSv(''); od(k);
+          } else {
+            alert('找不到：'+sv);
+          }
+        });
+      }
+    });
+  }
+
+  function runBT(code,type) {
+    var cc=CANDLES[code]||[]; if(cc.length<20) return null;
+    var cl=cc.map(function(c){return c[3];}); var ma20=calcMA(cl,20);
+    var cash=100000,sh=0,trades=[],eq=[100000];
+    for(var i=20;i<cc.length;i++){
+      var pr2=cl[i],ma=ma20[i];
+      if(type==='passive'){if(i%3===0){var b=Math.floor(5000/pr2);sh+=b;cash-=b*pr2;}}
+      else if(type==='growth'){if(pr2>ma&&sh===0){sh=Math.floor(cash*.85/pr2);cash-=sh*pr2;}else if(pr2<ma*.97&&sh>0){cash+=sh*pr2;sh=0;}}
+      else if(type==='income'){var s2=STOCKS[code];if(s2&&s2.divYield>4&&sh===0){sh=Math.floor(cash*.9/pr2);cash-=sh*pr2;}}
+      eq.push(cash+sh*pr2);
+    }
+    if(sh>0){cash+=sh*cl[cl.length-1];sh=0;}
+    var ret=((cash-100000)/100000*100);
+    var maxDD=0,peak=eq[0];
+    eq.forEach(function(v){if(v>peak)peak=v;var d=(peak-v)/peak*100;if(d>maxDD)maxDD=d;});
+    var ann=(Math.pow(cash/100000,12/cc.length*30)-1)*100;
+    return {ret:+ret.toFixed(1),finalVal:Math.round(cash),maxDD:+maxDD.toFixed(1),ann:+ann.toFixed(1),sharpe:+(maxDD>0?ann/maxDD*2:0).toFixed(2),
+      eq:eq.map(function(v,i){return {i:i,v:Math.round(v)};})};
+  }
+
+  // 投資組合計算
+  var pfS=portfolio.map(function(p){
+    var s=STOCKS[p.code],pr2=gp(p.code); if(!s||!pr2) return null;
+    var mv=pr2.price*p.shares,cost=p.cost*p.shares,pnl=mv-cost;
+    return Object.assign({},p,{s:s,pr:pr2,mv:mv,cost:cost,pnl:pnl,pct:+((pnl/cost)*100).toFixed(1)});
+  }).filter(function(x){return x!=null;});
+  var tMV=pfS.reduce(function(a,b){return a+b.mv;},0);
+  var tCost=pfS.reduce(function(a,b){return a+b.cost;},0);
+  var tPnl=tMV-tCost;
+
+  var allRisks=watchlist.reduce(function(acc,code){
+    var s=STOCKS[code],pr2=gp(code); if(!s||!pr2) return acc;
+    return acc.concat(RISK_RULES.filter(function(r){return r.check(s,pr2.price);}).map(function(r){return Object.assign({},r,{code:code,name:s.name});}));
+  },[]);
+
+  var TABS=[
+    {id:'watchlist',label:'自選股'},{id:'detail',label:'個股分析'},{id:'compare',label:'個股比較'},
+    {id:'backtest',label:'回測'},{id:'filter',label:'條件篩選'},{id:'portfolio',label:'投資組合'},
+    {id:'etf',label:'ETF'},{id:'risk',label:'風險',n:allRisks.length},
+    {id:'advisor',label:'AI投資顧問',v6:true},{id:'wealth',label:'財富中心',v6:true},{id:'factory',label:'策略工廠',v6:true},
+  ];
+
+  // ── render 各分頁 ─────────────────────────────
+  function renderWatchlist() {
+    return h('div',null,
+      h('div',{className:'sec'},'自選股清單'),
+      h('div',{className:'card'},
+        watchlist.length===0 ? h('div',{className:'empty'},'尚未加入任何自選股') :
+        watchlist.map(function(code){
+          var s=STOCKS[code],pr2=gp(code); if(!s||!pr2) return null;
+          return h('div',{key:code,className:'row'},
+            h(ScoreRing,{sc:calcScore(code)}),
+            h('div',{style:{flex:1,minWidth:0}},
+              h('div',{style:{display:'flex',gap:7,alignItems:'baseline',flexWrap:'wrap'}},
+                h('span',{style:{fontSize:13,fontWeight:600,color:'#d0e0d0'}},s.name),
+                h('span',{className:'mono',style:{fontSize:10,color:'#3a5a3a'}},code)
+              ),
+              h('div',{style:{marginTop:2}},
+                h('span',{className:'badge bsec'},s.sector),
+                s.tags.map(function(t){return h('span',{key:t,className:'badge btag'},t);})
+              )
+            ),
+            h('div',{style:{display:'flex',gap:7,alignItems:'center',flexShrink:0}},
+              h(Sparkline,{code:code}),
+              h('div',{style:{textAlign:'right'}},
+                h('div',{className:'mono',style:{fontSize:14,color:'#d0e0d0'}},pr2.price),
+                h('div',{className:'mono '+(pr2.change>=0?'up':'dn'),style:{fontSize:10}},
+                  (pr2.change>=0?'+':'')+pr2.change+' ('+(pr2.change>=0?'+':'')+pr2.changePct+'%)'
+                )
+              ),
+              h('div',{style:{display:'flex',gap:3}},
+                h('button',{className:'btn bgho',style:{fontSize:10,padding:'2px 6px'},onClick:function(){od(code);}},'詳'),
+                h('button',{className:'btn bdgr',style:{fontSize:10,padding:'2px 5px'},onClick:function(){rmW(code);}},'-')
+              )
+            )
+          );
+        })
+      ),
+      h('div',{className:'sec'},'加入自選股'),
+      h('div',{className:'sflex'},
+        Object.keys(STOCKS).filter(function(c){return !watchlist.includes(c);}).map(function(code){
+          return h('button',{key:code,className:'btn bgho',style:{fontSize:11},onClick:function(){addW(code);}},'+'+STOCKS[code].name);
+        })
+      )
+    );
+  }
+
+  function renderDetail() {
+    var code=activeStock||watchlist[0];
+    var s=STOCKS[code],pr2=gp(code);
+    if(!s||!pr2) return h('div',{className:'empty'},'輸入代號查詢，支援：'+Object.keys(STOCKS).join('、'));
+    var risks=RISK_RULES.filter(function(r){return r.check(s,pr2.price);});
+    var candles=candleCache[code]||CANDLES[code];
+    return h('div',null,
+      h('div',{className:'card'},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:7}},
+          h('div',null,
+            h('div',{style:{display:'flex',gap:8,alignItems:'baseline',flexWrap:'wrap'}},
+              h('span',{style:{fontSize:17,fontWeight:700,color:'#d0e0d0'}},s.name),
+              h('span',{className:'mono',style:{fontSize:10,color:'#3a5a3a'}},code)
+            ),
+            h('div',{style:{marginTop:4}},
+              h('span',{className:'badge bsec'},s.sector),
+              s.tags.map(function(t){return h('span',{key:t,className:'badge btag'},t);})
+            ),
+            h('div',{style:{marginTop:5,fontSize:11,color:'#3a5a3a',display:'flex',gap:11,flexWrap:'wrap'}},
+              h('span',null,'市值 ',h('span',{className:'mono',style:{color:'#5a8a5a'}},s.market_cap)),
+              h('span',null,'52W高 ',h('span',{className:'mono up'},s.week52High)),
+              h('span',null,'52W低 ',h('span',{className:'mono dn'},s.week52Low))
+            )
+          ),
+          h('div',{style:{display:'flex',gap:9,alignItems:'center'}},
+            h(ScoreRing,{sc:calcScore(code),size:52}),
+            h('div',{style:{textAlign:'right'}},
+              h('div',{className:'mono',style:{fontSize:20,color:'#d0e0d0'}},pr2.price),
+              h('div',{className:'mono '+(pr2.change>=0?'up':'dn'),style:{fontSize:11}},
+                (pr2.change>=0?'+':'')+pr2.change+' ('+(pr2.change>=0?'+':'')+pr2.changePct+'%)'
+              )
+            )
+          )
+        ),
+        h('div',{style:{display:'flex',gap:5,marginTop:8,flexWrap:'wrap'}},
+          !watchlist.includes(code)&&h('button',{className:'btn bpri',style:{fontSize:11},onClick:function(){addW(code);}},'+ 加入自選股'),
+          h('button',{className:'btn bgho',style:{fontSize:11},onClick:function(){setCmpA(code);setTab('compare');}},'比較')
+        )
+      ),
+      h('div',{className:'card'},
+        h('div',{className:'sec',style:{marginBottom:7}},'K 線圖（近30日）'),
+        candles ? h(CandleChart,{code:code,candles:candles}) : h('div',{style:{color:'#3a5a3a',fontSize:12,padding:'20px 0',textAlign:'center'}},'載入中...')
+      ),
+      s.sector!=='ETF'&&h('div',{className:'card'},
+        h('div',{className:'sec'},'基本面燈號'),
+        h('div',{className:'mggrid'},
+          METRICS.map(function(m){
+            var val=s[m.key]; if(val==null) return null;
+            var color=m.good(val)?'green':m.warn(val)?'red':'yellow';
+            var note=m.note(val);
+            return h('div',{key:m.key,className:'mgcell'},
+              h('div',{className:'mglbl'},h('span',null,m.label),h(Light,{color:color})),
+              h('div',{className:'mgval'},val+m.suffix),
+              note&&h('div',{className:'mgnote'},note)
+            );
+          }).filter(function(x){return x!=null;})
+        )
+      ),
+      risks.length>0&&h('div',{className:'card'},
+        h('div',{className:'sec'},'風險提示'),
+        risks.map(function(r){
+          return h('div',{key:r.id,className:'risk r'+r.level},
+            h('div',{className:'dot d'+r.level}),
+            h('span',{style:{fontSize:12}},r.label)
+          );
+        })
+      ),
+      h('div',{className:'card'},
+        h('div',{className:'sec'},'我的筆記'),
+        h('textarea',{className:'note',placeholder:'記錄觀察...',value:notes[code]||'',
+          onChange:function(e){var n=Object.assign({},notes);n[code]=e.target.value;setNotes(n);}})
+      )
+    );
+  }
+
+  function renderCompare() {
+    var codes=[cmpA,cmpB];
+    var metrics=[
+      {label:'現價',fn:function(c){return gp(c)?gp(c).price:'-';}},
+      {label:'漲跌%',fn:function(c){var p=gp(c);return p?(p.changePct>0?'+':'')+p.changePct+'%':'-';},neutral:true},
+      {label:'殖利率',fn:function(c){return STOCKS[c]&&STOCKS[c].divYield?STOCKS[c].divYield+'%':'-';},bigger:true},
+      {label:'本益比',fn:function(c){return STOCKS[c]&&STOCKS[c].pe?STOCKS[c].pe+'x':'-';},bigger:false},
+      {label:'EPS',fn:function(c){return STOCKS[c]&&STOCKS[c].eps?STOCKS[c].eps+'元':'-';},bigger:true},
+      {label:'ROE',fn:function(c){return STOCKS[c]&&STOCKS[c].roe?STOCKS[c].roe+'%':'-';},bigger:true},
+      {label:'毛利率',fn:function(c){return STOCKS[c]&&STOCKS[c].gross_margin?STOCKS[c].gross_margin+'%':'-';},bigger:true},
+      {label:'負債比',fn:function(c){return STOCKS[c]&&STOCKS[c].debt_ratio?STOCKS[c].debt_ratio+'%':'-';},bigger:false},
+      {label:'評分',fn:function(c){return calcScore(c)+'分';},bigger:true},
+    ];
+    return h('div',null,
+      h('div',{className:'sec'},'個股比較'),
+      h('div',{className:'card',style:{marginBottom:10}},
+        h('div',{style:{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}},
+          h('select',{className:'inp',value:cmpA,onChange:function(e){setCmpA(e.target.value);}},
+            Object.keys(STOCKS).map(function(c){return h('option',{key:c,value:c},STOCKS[c].name+'（'+c+'）');})),
+          h('span',{style:{color:'#3a5a3a'}},'vs'),
+          h('select',{className:'inp',value:cmpB,onChange:function(e){setCmpB(e.target.value);}},
+            Object.keys(STOCKS).map(function(c){return h('option',{key:c,value:c},STOCKS[c].name+'（'+c+'）');}))
+        )
+      ),
+      h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        codes.map(function(code,ci){
+          var s=STOCKS[code],pr2=gp(code); if(!s||!pr2) return null;
+          return h('div',{key:code,className:'compare-col'},
+            h('div',{style:{fontSize:13,fontWeight:600,color:'#d0e0d0',marginBottom:5}},s.name,' ',h('span',{className:'mono',style:{fontSize:10,color:'#3a5a3a'}},code)),
+            h('div',{style:{marginBottom:7}},h(ScoreRing,{sc:calcScore(code),size:40})),
+            metrics.map(function(m){
+              var va=parseFloat(m.fn(cmpA)),vb=parseFloat(m.fn(cmpB));
+              var hi=false;
+              if(!isNaN(va)&&!isNaN(vb)&&!m.neutral) hi=m.bigger?(ci===0?va>vb:vb>va):(ci===0?va<vb:vb<va);
+              return h('div',{key:m.label,style:{display:'flex',justifyContent:'space-between',padding:'3px 0',borderBottom:'1px solid #101810',fontSize:11}},
+                h('span',{style:{color:'#4a6a4a'}},m.label),
+                h('span',{className:'mono',style:{color:hi?'#34d399':'#bfcfbf',fontWeight:hi?600:400}},m.fn(code))
+              );
+            })
+          );
+        })
+      ),
+      h('div',{style:{fontSize:10,color:'#3a5a3a',marginTop:7}},'绿色代表該指標表現較佳')
+    );
+  }
+
+  function renderBacktest() {
+    return h('div',null,
+      h('div',{className:'sec'},'策略回測'),
+      h('div',{className:'card'},
+        h('div',{style:{display:'flex',gap:9,flexWrap:'wrap',alignItems:'flex-end'}},
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#3a5a3a',marginBottom:3}},'個股'),
+            h('select',{className:'inp',value:btCode,onChange:function(e){setBtCode(e.target.value);}},
+              Object.keys(STOCKS).map(function(c){return h('option',{key:c,value:c},STOCKS[c].name+'（'+c+'）');}))
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#3a5a3a',marginBottom:3}},'策略'),
+            h('select',{className:'inp',value:btType,onChange:function(e){setBtType(e.target.value);}},
+              h('option',{value:'passive'},'被動（定期定額）'),
+              h('option',{value:'growth'},'成長（MA交叉）'),
+              h('option',{value:'income'},'收益（高殖利率）'),
+              h('option',{value:'value'},'價值（低估買進）')
+            )
+          ),
+          h('button',{className:'btn bpri',onClick:function(){setBtRes(runBT(btCode,btType));}},'執行回測')
+        )
+      ),
+      btRes&&h('div',null,
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:10}},
+          [{l:'累積報酬',v:(btRes.ret>0?'+':'')+btRes.ret+'%',c:btRes.ret>=0?'#34d399':'#f87171'},
+           {l:'年化報酬',v:(btRes.ann>0?'+':'')+btRes.ann+'%',c:btRes.ann>=0?'#34d399':'#f87171'},
+           {l:'最大回撤',v:'-'+btRes.maxDD+'%',c:'#f87171'},
+           {l:'夏普值',v:btRes.sharpe,c:'#60a5fa'},
+           {l:'最終資產',v:'$'+btRes.finalVal.toLocaleString(),c:'#bfcfbf'},
+          ].map(function(x){return h('div',{key:x.l,className:'sumcard'},
+            h('div',{className:'sumlbl'},x.l),
+            h('div',{className:'sumval mono',style:{color:x.c}},x.v)
+          );})
+        ),
+        h('div',{className:'card'},
+          h('div',{className:'sec',style:{marginBottom:7}},'資產曲線'),
+          h('svg',{width:'100%',viewBox:'0 0 500 120',preserveAspectRatio:'none',style:{display:'block',height:120}},
+            (function(){
+              var eq=btRes.eq, W=500,H=110,PL=8,PR=8,PT=5,PB=5;
+              var vals=eq.map(function(d){return d.v;});
+              var minV=Math.min.apply(null,vals), maxV=Math.max.apply(null,vals);
+              var py=function(v){return PT+((maxV-v)/(maxV-minV||1))*(H-PT-PB);};
+              var px=function(i){return PL+(i/(eq.length-1))*(W-PL-PR);};
+              var pts=eq.map(function(d,i){return px(i)+','+py(d.v);}).join(' ');
+              var refY=py(100000);
+              return [
+                h('line',{key:'ref',x1:PL,x2:W-PR,y1:refY,y2:refY,stroke:'#253525',strokeDasharray:'3 3',strokeWidth:'1'}),
+                h('polyline',{key:'line',points:pts,fill:'none',stroke:'#34d399',strokeWidth:'1.5'})
+              ];
+            })()
+          )
+        )
+      )
+    );
+  }
+
+  function renderFilter() {
+    return h('div',null,
+      h('div',{className:'sec'},'條件篩選器'),
+      savedF.map(function(s,i){
+        return h('div',{key:i,style:{background:'#090e09',border:'1px solid #1a2a1a',borderRadius:5,padding:'8px 10px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'}},
+          h('div',null,
+            h('div',{style:{fontSize:12,color:'#8ac88a'}},s.name),
+            h('div',{style:{fontSize:10,color:'#3a5a3a',marginTop:2}},
+              (s.filters.roe_min?'ROE>='+s.filters.roe_min+'% ':'')+
+              (s.filters.yield_min?'殖利率>='+s.filters.yield_min+'% ':'')+
+              (s.filters.pe_max?'PE<='+s.filters.pe_max+'x ':'')
+            )
+          ),
+          h('div',{style:{display:'flex',gap:5}},
+            h('button',{className:'btn bpri',style:{fontSize:10,padding:'2px 7px'},onClick:function(){setFilters(Object.assign({},s.filters));}}, '載入'),
+            h('button',{className:'btn bdgr',style:{fontSize:10,padding:'2px 5px'},onClick:function(){setSavedF(savedF.filter(function(_,j){return j!==i;}));}},'x')
+          )
+        );
+      }),
+      h('div',{className:'card'},
+        h('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:7,flexWrap:'wrap'}},
+          h('span',{style:{fontSize:11,color:'#4a6a4a',minWidth:100}},'ROE 最低（%）'),
+          h('input',{className:'inp',style:{width:75},type:'number',placeholder:'10',value:filters.roe_min,onChange:function(e){setFilters(Object.assign({},filters,{roe_min:e.target.value}));}})
+        ),
+        h('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:7,flexWrap:'wrap'}},
+          h('span',{style:{fontSize:11,color:'#4a6a4a',minWidth:100}},'殖利率 最低（%）'),
+          h('input',{className:'inp',style:{width:75},type:'number',placeholder:'4',value:filters.yield_min,onChange:function(e){setFilters(Object.assign({},filters,{yield_min:e.target.value}));}})
+        ),
+        h('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:7,flexWrap:'wrap'}},
+          h('span',{style:{fontSize:11,color:'#4a6a4a',minWidth:100}},'本益比 最高（x）'),
+          h('input',{className:'inp',style:{width:75},type:'number',placeholder:'25',value:filters.pe_max,onChange:function(e){setFilters(Object.assign({},filters,{pe_max:e.target.value}));}})
+        ),
+        h('div',{style:{marginBottom:7}},
+          h('label',{style:{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#6a8a6a'}},
+            h('input',{type:'checkbox',checked:filters.eps_pos,onChange:function(e){setFilters(Object.assign({},filters,{eps_pos:e.target.checked}));}}),
+            'EPS 為正數'
+          )
+        ),
+        h('div',{style:{marginBottom:7}},
+          h('label',{style:{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#6a8a6a'}},
+            h('input',{type:'checkbox',checked:filters.rev_pos,onChange:function(e){setFilters(Object.assign({},filters,{rev_pos:e.target.checked}));}}),
+            '營收正成長'
+          )
+        ),
+        h('div',{style:{display:'flex',gap:6,marginTop:6,flexWrap:'wrap'}},
+          h('button',{className:'btn bpri',onClick:function(){
+            var res=Object.keys(STOCKS).filter(function(code){
+              var s=STOCKS[code]; if(s.sector==='ETF') return false;
+              if(filters.roe_min&&(s.roe==null||s.roe<+filters.roe_min)) return false;
+              if(filters.yield_min&&s.divYield<+filters.yield_min) return false;
+              if(filters.pe_max&&s.pe>+filters.pe_max) return false;
+              if(filters.eps_pos&&(s.eps==null||s.eps<=0)) return false;
+              if(filters.rev_pos&&(s.revenue_growth==null||s.revenue_growth<=0)) return false;
+              return true;
+            });
+            setFRes(res);
+          }},'執行篩選'),
+          h('input',{className:'inp',style:{width:105},placeholder:'策略名稱',value:sName,onChange:function(e){setSName(e.target.value);}}),
+          h('button',{className:'btn bgho',style:{fontSize:11},onClick:function(){
+            if(!sName.trim()) return;
+            setSavedF(savedF.concat([{name:sName,filters:Object.assign({},filters)}]));
+            setSName('');
+          }},'儲存策略'),
+          h('button',{className:'btn bgho',style:{fontSize:11},onClick:function(){setFilters({roe_min:'',yield_min:'',pe_max:'',eps_pos:false,rev_pos:false});setFRes(null);}},'清除')
+        )
+      ),
+      fRes!==null&&h('div',null,
+        h('div',{className:'sec'},'篩選結果（'+fRes.length+' 筆）'),
+        fRes.length===0?h('div',{className:'empty'},'無符合條件的個股'):
+        h('div',{className:'card',style:{overflowX:'auto'}},
+          h('table',null,
+            h('thead',null,h('tr',null,['個股','現價','ROE','殖利率','PE','EPS','評分',''].map(function(t){return h('th',{key:t},t);}))),
+            h('tbody',null,fRes.map(function(code){
+              var s=STOCKS[code],pr2=gp(code); if(!pr2) return null;
+              return h('tr',{key:code},
+                h('td',null,h('div',{style:{fontWeight:500}},s.name),h('div',{className:'mono',style:{fontSize:10,color:'#3a5a3a'}},code)),
+                h('td',{className:'mono'},pr2.price),
+                h('td',{className:'mono up'},s.roe+'%'),
+                h('td',{className:'mono up'},s.divYield+'%'),
+                h('td',{className:'mono'},s.pe+'x'),
+                h('td',{className:'mono'},s.eps+'元'),
+                h('td',null,h(ScoreRing,{sc:calcScore(code),size:34})),
+                h('td',null,h('button',{className:'btn bgho',style:{fontSize:10,padding:'2px 5px'},onClick:function(){od(code);}},'詳'))
+              );
+            }))
+          )
+        )
+      )
+    );
+  }
+
+  function renderPortfolio() {
+    return h('div',null,
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:11}},
+        [{l:'總市值',v:'$'+Math.round(tMV).toLocaleString(),c:'#bfcfbf'},
+         {l:'總損益',v:(tPnl>=0?'+':'')+'$'+Math.round(tPnl).toLocaleString(),c:tPnl>=0?'#34d399':'#f87171'},
+         {l:'報酬率',v:(tPnl>=0?'+':'')+(tCost?((tPnl/tCost)*100).toFixed(1):0)+'%',c:tPnl>=0?'#34d399':'#f87171'},
+        ].map(function(x){return h('div',{key:x.l,className:'sumcard'},h('div',{className:'sumlbl'},x.l),h('div',{className:'sumval mono',style:{color:x.c}},x.v));})
+      ),
+      h('div',{className:'card',style:{overflowX:'auto'}},
+        h('table',null,
+          h('thead',null,h('tr',null,['個股','股數','成本','現價','市值','損益',''].map(function(t){return h('th',{key:t},t);}))),
+          h('tbody',null,pfS.map(function(p,i){
+            return h('tr',{key:i},
+              h('td',null,h('div',{style:{fontWeight:500}},p.s.name),h('div',{className:'mono',style:{fontSize:10,color:'#3a5a3a'}},p.code)),
+              h('td',{className:'mono'},p.shares),
+              h('td',{className:'mono'},p.cost),
+              h('td',{className:'mono'},p.pr.price),
+              h('td',{className:'mono'},Math.round(p.mv).toLocaleString()),
+              h('td',{className:'mono '+(p.pnl>=0?'up':'dn')},(p.pnl>=0?'+':'')+Math.round(p.pnl).toLocaleString(),' ('+(p.pnl>=0?'+':'')+p.pct+'%)'),
+              h('td',null,h('button',{className:'btn bdgr',style:{fontSize:10,padding:'2px 4px'},onClick:function(){rmPf(i);}},'x'))
+            );
+          }))
+        )
+      ),
+      h('div',{className:'sec'},'新增持股'),
+      h('div',{className:'card'},
+        h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}},
+          h('select',{className:'inp',value:pfForm.code,onChange:function(e){setPfForm(Object.assign({},pfForm,{code:e.target.value}));}},
+            h('option',{value:''},'選擇個股'),
+            Object.keys(STOCKS).map(function(c){return h('option',{key:c,value:c},STOCKS[c].name+'（'+c+'）');})
+          ),
+          h('input',{className:'inp',style:{width:70},placeholder:'股數',type:'number',value:pfForm.shares,onChange:function(e){setPfForm(Object.assign({},pfForm,{shares:e.target.value}));}}),
+          h('input',{className:'inp',style:{width:80},placeholder:'成本價',type:'number',value:pfForm.cost,onChange:function(e){setPfForm(Object.assign({},pfForm,{cost:e.target.value}));}}),
+          h('button',{className:'btn bpri',onClick:addPf},'+ 加入')
+        )
+      )
+    );
+  }
+
+  function renderETF() {
+    var etfList=Object.keys(STOCKS).filter(function(c){return STOCKS[c].sector==='ETF';});
+    return h('div',null,
+      h('div',{className:'sec'},'ETF 並排比較'),
+      h('div',{className:'card',style:{overflowX:'auto'}},
+        h('table',null,
+          h('thead',null,h('tr',null,['名稱','現價','漲跌%','殖利率','P/E','P/B','52W高','52W低','評分'].map(function(t){return h('th',{key:t},t);}))),
+          h('tbody',null,etfList.map(function(code){
+            var s=STOCKS[code],pr2=gp(code); if(!pr2) return null;
+            return h('tr',{key:code},
+              h('td',null,h('div',{style:{fontWeight:500}},s.name),h('div',{className:'mono',style:{fontSize:10,color:'#3a5a3a'}},code)),
+              h('td',{className:'mono'},pr2.price),
+              h('td',{className:'mono '+(pr2.change>=0?'up':'dn')},(pr2.change>=0?'+':'')+pr2.changePct+'%'),
+              h('td',{className:'mono up'},s.divYield+'%'),
+              h('td',{className:'mono'},s.pe+'x'),
+              h('td',{className:'mono'},s.pb+'x'),
+              h('td',{className:'mono'},s.week52High),
+              h('td',{className:'mono'},s.week52Low),
+              h('td',null,h(ScoreRing,{sc:calcScore(code),size:36}))
+            );
+          }))
+        )
+      )
+    );
+  }
+
+  function renderRisk() {
+    return h('div',null,
+      h('div',{className:'sec'},'自選股風險掃描'),
+      allRisks.length===0?h('div',{className:'empty'},'目前無明顯風險訊號'):
+      allRisks.map(function(r,i){
+        return h('div',{key:i,className:'risk r'+r.level},
+          h('div',{className:'dot d'+r.level}),
+          h('div',{style:{flex:1}},
+            h('span',{style:{fontWeight:500,color:'#bfcfbf'}},r.name),
+            h('span',{className:'mono',style:{fontSize:10,color:'#3a5a3a',marginLeft:5}},r.code),
+            h('div',{style:{fontSize:11,color:'#5a7a5a',marginTop:1}},r.label)
+          ),
+          h('span',{style:{fontSize:10,color:r.level==='danger'?'#f87171':r.level==='warn'?'#fbbf24':'#60a5fa'}},
+            r.level==='danger'?'高風險':r.level==='warn'?'注意':'觀察'
+          )
+        );
+      })
+    );
+  }
+
+
+  // ═══ V6 AI 投資顧問 ═══════════════════════════
+  function renderAdvisor() {
+    var expOpts=[{v:'beginner',l:'新手（<1年）'},{v:'intermediate',l:'有經驗（1-5年）'},{v:'experienced',l:'資深（5年以上）'}];
+    var riskOpts=[{v:'conservative',l:'保守型（優先保本）'},{v:'moderate',l:'穩健型（平衡風險）'},{v:'aggressive',l:'積極型（追求高報酬）'}];
+    var goalOpts=[{v:'growth',l:'資本增值'},{v:'income',l:'穩定配息'},{v:'balanced',l:'均衡配置'},{v:'retire',l:'退休規劃'}];
+
+    function genPrompt() {
+      return '你是一位台灣的AI投資顧問，請根據以下客戶條件，以繁體中文提供個人化投資建議，分為五個部分：\n' +
+        '【風險評估】【建議資產配置】【投資策略建議】【股息收入規劃】【注意事項】\n\n' +
+        '客戶條件：\n' +
+        '年齡：'+(advisor.age||'未填')+'歲\n' +
+        '月收入：'+(advisor.income?advisor.income+'萬元':'未填')+'\n' +
+        '可投資資產：'+(advisor.assets?advisor.assets+'萬元':'未填')+'\n' +
+        '投資經驗：'+expOpts.find(function(x){return x.v===advisor.experience;}).l+'\n' +
+        '風險承受度：'+riskOpts.find(function(x){return x.v===advisor.risk;}).l+'\n' +
+        '投資目標：'+goalOpts.find(function(x){return x.v===advisor.goal;}).l+'\n\n' +
+        '每個部分3-4句，給具體的台股/ETF建議方向（不要直接點名特定股票），' +
+        '末尾加：⚠ 以上為AI輔助分析，不構成投資建議，投資有風險請自行判斷。';
+    }
+
+    function runAdvisor() {
+      if(!advisor.age||!advisor.income||!advisor.assets){alert('請填寫年齡、收入、資產');return;}
+      setAdvisorLoading(true);
+      setAdvisorReport('');
+      var prompt=genPrompt();
+      fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':advisorApiKey,'anthropic-version':'2023-06-01'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,
+          messages:[{role:'user',content:prompt}]})
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d.content&&d.content[0]&&d.content[0].text) setAdvisorReport(d.content[0].text);
+        else setAdvisorReport('⚠ 無法取得分析結果，請確認 API Key 是否正確。');
+        setAdvisorLoading(false);
+      }).catch(function(){
+        setAdvisorReport('⚠ 連線失敗，請稍後再試。');
+        setAdvisorLoading(false);
+      });
+    }
+
+    return h('div',null,
+      h('div',{className:'sec'},'AI 投資顧問'),
+      h('div',{className:'card-v6',style:{marginBottom:10}},
+        h('div',{style:{fontSize:12,color:'#818cf8',marginBottom:10,padding:'8px 12px',background:'#13132a',borderRadius:5,border:'1px solid #2d2d6b'}},
+          '填寫個人條件，AI 依據你的情況產生專屬投資建議。所有建議僅供參考，不構成投資建議。'
+        ),
+        h('div',{className:'advisor-form'},
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'年齡'),
+            h('input',{className:'inp',style:{width:'100%'},type:'number',placeholder:'例：35',
+              value:advisor.age,onChange:function(e){setAdvisor(Object.assign({},advisor,{age:e.target.value}));}})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'月收入（萬元）'),
+            h('input',{className:'inp',style:{width:'100%'},type:'number',placeholder:'例：8',
+              value:advisor.income,onChange:function(e){setAdvisor(Object.assign({},advisor,{income:e.target.value}));}})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'可投資資產（萬元）'),
+            h('input',{className:'inp',style:{width:'100%'},type:'number',placeholder:'例：200',
+              value:advisor.assets,onChange:function(e){setAdvisor(Object.assign({},advisor,{assets:e.target.value}));}})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'投資經驗'),
+            h('select',{className:'inp',style:{width:'100%'},value:advisor.experience,
+              onChange:function(e){setAdvisor(Object.assign({},advisor,{experience:e.target.value}));}},
+              expOpts.map(function(o){return h('option',{key:o.v,value:o.v},o.l);})
+            )
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'風險承受度'),
+            h('select',{className:'inp',style:{width:'100%'},value:advisor.risk,
+              onChange:function(e){setAdvisor(Object.assign({},advisor,{risk:e.target.value}));}},
+              riskOpts.map(function(o){return h('option',{key:o.v,value:o.v},o.l);})
+            )
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'投資目標'),
+            h('select',{className:'inp',style:{width:'100%'},value:advisor.goal,
+              onChange:function(e){setAdvisor(Object.assign({},advisor,{goal:e.target.value}));}},
+              goalOpts.map(function(o){return h('option',{key:o.v,value:o.v},o.l);})
+            )
+          )
+        ),
+        h('div',{style:{marginTop:12,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'Anthropic API Key（選填，有才能使用 AI 功能）'),
+            h('input',{className:'inp',style:{width:280},type:'password',placeholder:'sk-ant-...',
+              value:advisorApiKey,onChange:function(e){setAdvisorApiKey(e.target.value);}})
+          )
+        ),
+        h('button',{className:'btn bv6',style:{marginTop:12,fontSize:12},onClick:runAdvisor,disabled:advisorLoading},
+          advisorLoading?'AI 分析中...':'產生 AI 投資建議'
+        )
+      ),
+      advisorReport&&h('div',{className:'card-v6'},
+        h('div',{className:'sec',style:{color:'#818cf8'}},'AI 投資建議報告'),
+        h('div',{style:{fontSize:12,lineHeight:1.95,color:'#b0b0d0',whiteSpace:'pre-wrap'}},advisorReport),
+        h('button',{className:'btn bgho',style:{marginTop:10,fontSize:11},onClick:function(){setAdvisorReport('');}},'清除報告')
+      )
+    );
+  }
+
+  // ═══ V6 財富中心 ═══════════════════════════════
+  function renderWealth() {
+    var totalAssets =
+      (wealth.cash||0) +
+      wealth.deposit.reduce(function(a,x){return a+(x.amount||0);},0) +
+      wealth.saving.reduce(function(a,x){return a+(x.amount||0);},0) +
+      wealth.insurance.reduce(function(a,x){return a+(x.amount||0);},0) +
+      wealth.other.reduce(function(a,x){return a+(x.amount||0);},0) +
+      pfS.reduce(function(a,b){return a+b.mv;},0);
+    var totalDebt = wealth.debt||0;
+    var netAssets = totalAssets - totalDebt;
+
+    var categories = [
+      {key:'stocks',label:'股票',color:'#34d399',amount:pfS.reduce(function(a,b){return a+b.mv;},0)},
+      {key:'deposit',label:'定存',color:'#60a5fa',amount:wealth.deposit.reduce(function(a,x){return a+(x.amount||0);},0)},
+      {key:'saving',label:'活存',color:'#fbbf24',amount:wealth.saving.reduce(function(a,x){return a+(x.amount||0);},0)},
+      {key:'insurance',label:'保險',color:'#a78bfa',amount:wealth.insurance.reduce(function(a,x){return a+(x.amount||0);},0)},
+      {key:'cash',label:'現金',color:'#2dd4bf',amount:wealth.cash||0},
+      {key:'other',label:'其他',color:'#f87171',amount:wealth.other.reduce(function(a,x){return a+(x.amount||0);},0)},
+    ].filter(function(x){return x.amount>0;});
+
+    function updateField(category,field,value) {
+      var w2 = Object.assign({},wealth);
+      if(field==='cash') { w2.cash=+value; }
+      else if(field==='debt') { w2.debt=+value; }
+      else {
+        w2[category] = wealth[category].map(function(x,i){
+          if(i===0) return Object.assign({},x,{amount:+value});
+          return x;
+        });
+      }
+      setWealth(w2);
+    }
+
+    return h('div',null,
+      h('div',{className:'sec'},'個人財富中心'),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}},
+        [{l:'總資產',v:'$'+Math.round(totalAssets).toLocaleString(),c:'#bfcfbf'},
+         {l:'總負債',v:'$'+Math.round(totalDebt).toLocaleString(),c:'#f87171'},
+         {l:'淨資產',v:'$'+Math.round(netAssets).toLocaleString(),c:netAssets>=0?'#34d399':'#f87171'},
+        ].map(function(x){return h('div',{key:x.l,className:'sumcard'},
+          h('div',{className:'sumlbl'},x.l),
+          h('div',{className:'sumval mono',style:{color:x.c}},x.v)
+        );})
+      ),
+      totalAssets>0&&h('div',{className:'card-v6'},
+        h('div',{className:'sec',style:{color:'#818cf8'}},'資產配置'),
+        categories.map(function(cat){
+          var pct=totalAssets>0?(cat.amount/totalAssets*100).toFixed(1):0;
+          return h('div',{key:cat.key,style:{marginBottom:8}},
+            h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}},
+              h('span',{style:{color:'#b0b0d0'}},cat.label),
+              h('span',{className:'mono',style:{color:cat.color}},'$'+Math.round(cat.amount).toLocaleString()+' ('+pct+'%)')
+            ),
+            h('div',{className:'progress-bar'},
+              h('div',{className:'progress-fill',style:{width:pct+'%',background:cat.color}})
+            )
+          );
+        })
+      ),
+      h('div',{className:'card-v6'},
+        h('div',{className:'sec',style:{color:'#818cf8'}},'資產輸入'),
+        h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}},
+          [{label:'定存（元）',field:'deposit',cat:'deposit'},
+           {label:'活存（元）',field:'saving',cat:'saving'},
+           {label:'保險（元）',field:'insurance',cat:'insurance'},
+           {label:'現金（元）',field:'cash',cat:'cash'},
+           {label:'其他資產（元）',field:'other',cat:'other'},
+           {label:'總負債（元）',field:'debt',cat:'debt'},
+          ].map(function(f){
+            var val = f.field==='cash'?(wealth.cash||0):f.field==='debt'?(wealth.debt||0):(wealth[f.cat]&&wealth[f.cat][0]?wealth[f.cat][0].amount||0:0);
+            return h('div',{key:f.field},
+              h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},f.label),
+              h('input',{className:'inp',style:{width:'100%'},type:'number',placeholder:'0',value:val||'',
+                onChange:function(e){updateField(f.cat,f.field,e.target.value);}})
+            );
+          })
+        ),
+        h('div',{style:{marginTop:10,fontSize:10,color:'#3a3a6a'}},'股票部分從投資組合自動計算')
+      )
+    );
+  }
+
+  // ═══ V6 策略工廠 ═══════════════════════════════
+  function renderFactory() {
+    var typeColor={income:'#fbbf24',growth:'#34d399',passive:'#60a5fa',value:'#a78bfa',momentum:'#f87171'};
+    var typeLabel={income:'高股息',growth:'成長股',passive:'被動投資',value:'價值投資',momentum:'動能策略'};
+    var statusColor={active:'#34d399',watch:'#fbbf24',retired:'#f87171'};
+    var statusLabel={active:'啟用',watch:'觀察',retired:'淘汰'};
+    var selFacObj=factories.find(function(f){return f.id===selFac;})||factories[0];
+
+    function newFactory() {
+      var id='f'+Date.now();
+      var nf={id:id,name:'新策略',type:'growth',status:'active',version:1,
+        conditions:{yield_min:0,pe_max:25,roe_min:10,rev_growth:5},
+        created:new Date().toISOString().slice(0,7),modified:new Date().toISOString().slice(0,7),
+        backtests:0,winRate:null,annReturn:null,maxDD:null,note:''};
+      setFactories(factories.concat([nf]));
+      setSelFac(id);
+      setFacForm(Object.assign({},nf));
+      setFacEdit(true);
+    }
+
+    function saveFactory() {
+      setFactories(factories.map(function(f){
+        if(f.id===facForm.id) return Object.assign({},facForm,{version:f.version+1,modified:new Date().toISOString().slice(0,7)});
+        return f;
+      }));
+      setFacEdit(false);
+    }
+
+    function runFactoryBT(fac) {
+      var r=runBT('0050',fac.type);
+      if(r) {
+        setFactories(factories.map(function(f){
+          if(f.id===fac.id) return Object.assign({},f,{backtests:f.backtests+1,winRate:r.winRate,annReturn:r.ann,maxDD:r.maxDD});
+          return f;
+        }));
+      }
+    }
+
+    return h('div',null,
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+        h('div',{className:'sec',style:{marginBottom:0}},'策略工廠'),
+        h('button',{className:'btn bv6',style:{fontSize:11},onClick:newFactory},'+ 建立策略')
+      ),
+      h('div',{style:{display:'grid',gridTemplateColumns:'180px 1fr',gap:10}},
+        h('div',null,
+          factories.map(function(f){
+            return h('div',{key:f.id,className:'fac-card'+(selFac===f.id?' active':''),
+              onClick:function(){setSelFac(f.id);setFacEdit(false);}},
+              h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
+                h('div',{style:{fontSize:12,fontWeight:600,color:'#d0d0f0'}},f.name),
+                h('span',{style:{fontSize:9,color:statusColor[f.status]||'#8a8aaa',background:'rgba(0,0,0,.3)',padding:'1px 5px',borderRadius:3}},statusLabel[f.status])
+              ),
+              h('div',{style:{marginTop:3,fontSize:10,color:typeColor[f.type]||'#8a8aaa'}},typeLabel[f.type]),
+              h('div',{style:{fontSize:10,color:'#3a3a6a',marginTop:3}},'v'+f.version+' · '+f.created),
+              f.annReturn!=null&&h('div',{style:{fontSize:10,color:f.annReturn>=0?'#34d399':'#f87171',marginTop:2}},'年化 '+(f.annReturn>0?'+':'')+f.annReturn+'%')
+            );
+          })
+        ),
+        selFacObj&&h('div',null,
+          !facEdit&&h('div',null,
+            h('div',{className:'card-v6'},
+              h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:6}},
+                h('div',null,
+                  h('div',{style:{fontSize:15,fontWeight:700,color:'#d0d0f0'}},selFacObj.name),
+                  h('div',{style:{marginTop:4,display:'flex',gap:6,flexWrap:'wrap'}},
+                    h('span',{style:{fontSize:10,color:typeColor[selFacObj.type]||'#8a8aaa'}},typeLabel[selFacObj.type]),
+                    h('span',{style:{fontSize:10,color:statusColor[selFacObj.status]||'#8a8aaa',background:'rgba(0,0,0,.3)',padding:'1px 6px',borderRadius:3}},statusLabel[selFacObj.status])
+                  ),
+                  h('div',{style:{fontSize:10,color:'#3a3a6a',marginTop:4}},'建立 '+selFacObj.created+' · v'+selFacObj.version+' · 回測 '+selFacObj.backtests+' 次')
+                ),
+                h('div',{style:{display:'flex',gap:5}},
+                  h('button',{className:'btn bv6',style:{fontSize:11},onClick:function(){setFacForm(Object.assign({},selFacObj));setFacEdit(true);}},'編輯'),
+                  h('button',{className:'btn bgho',style:{fontSize:11},onClick:function(){runFactoryBT(selFacObj);}},'回測'),
+                  h('button',{className:'btn bdgr',style:{fontSize:11},onClick:function(){setFactories(factories.filter(function(f){return f.id!==selFacObj.id;}));}},'刪除')
+                )
+              ),
+              h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:11}},
+                h('div',null,
+                  h('div',{style:{fontSize:10,color:'#3a3a6a',marginBottom:5}},'選股條件'),
+                  Object.entries(selFacObj.conditions).map(function(entry){
+                    var k=entry[0],v=entry[1];
+                    var labels={yield_min:'殖利率>=',pe_max:'PE<=',roe_min:'ROE>=',rev_growth:'營收成長>='};
+                    return h('div',{key:k,style:{fontSize:11,color:'#8080b0',padding:'2px 0'}},'• '+(labels[k]||k)+' '+v+(k==='pe_max'?'x':'%'));
+                  })
+                ),
+                h('div',null,
+                  h('div',{style:{fontSize:10,color:'#3a3a6a',marginBottom:5}},'回測績效'),
+                  selFacObj.annReturn!=null?h('div',null,
+                    [{l:'年化報酬',v:(selFacObj.annReturn>0?'+':'')+selFacObj.annReturn+'%',c:selFacObj.annReturn>=0?'#34d399':'#f87171'},
+                     {l:'勝率',v:selFacObj.winRate+'%',c:'#fbbf24'},
+                     {l:'最大回撤',v:'-'+selFacObj.maxDD+'%',c:'#f87171'},
+                    ].map(function(x){return h('div',{key:x.l,style:{fontSize:11,color:'#8080b0',padding:'2px 0'}},x.l+': ',h('span',{style:{color:x.c,fontFamily:"'DM Mono',monospace"}},x.v));})
+                  ):h('div',{style:{fontSize:11,color:'#3a3a6a'}},'尚未回測')
+                )
+              ),
+              selFacObj.note&&h('div',{style:{marginTop:8,fontSize:11,color:'#5a5a8a',padding:'8px',background:'#13132a',borderRadius:4}},selFacObj.note)
+            ),
+            h('div',{className:'card-v6'},
+              h('div',{className:'sec',style:{color:'#818cf8'}},'策略比較（所有策略 vs 定期定額）'),
+              h('div',{style:{overflowX:'auto'}},
+                h('table',null,
+                  h('thead',null,h('tr',null,['策略名稱','類型','狀態','年化報酬','勝率','最大回撤','版本',''].map(function(t){return h('th',{key:t},t);}))),
+                  h('tbody',null,factories.map(function(f){
+                    return h('tr',{key:f.id,style:{background:f.id===selFac?'rgba(129,140,248,0.04)':''}},
+                      h('td',{style:{fontWeight:500,color:'#d0d0f0'}},f.name),
+                      h('td',null,h('span',{style:{fontSize:10,color:typeColor[f.type]||'#8a8aaa'}},typeLabel[f.type])),
+                      h('td',null,h('span',{style:{fontSize:10,color:statusColor[f.status]||'#8a8aaa'}},statusLabel[f.status])),
+                      h('td',{className:'mono',style:{color:f.annReturn!=null?(f.annReturn>=0?'#34d399':'#f87171'):'#3a3a6a'}},f.annReturn!=null?(f.annReturn>0?'+':'')+f.annReturn+'%':'—'),
+                      h('td',{className:'mono warn'},f.winRate!=null?f.winRate+'%':'—'),
+                      h('td',{className:'mono dn'},f.maxDD!=null?'-'+f.maxDD+'%':'—'),
+                      h('td',{className:'mono',style:{color:'#3a3a6a'}},'v'+f.version),
+                      h('td',null,
+                        h('select',{className:'inp',style:{fontSize:10,padding:'2px 5px'},value:f.status,
+                          onChange:function(e){var s=e.target.value;setFactories(factories.map(function(x){return x.id===f.id?Object.assign({},x,{status:s}):x;}));}},
+                          [{v:'active',l:'啟用'},{v:'watch',l:'觀察'},{v:'retired',l:'淘汰'}].map(function(o){return h('option',{key:o.v,value:o.v},o.l);})
+                        )
+                      )
+                    );
+                  }))
+                )
+              )
+            )
+          ),
+          facEdit&&facForm&&h('div',{className:'card-v6'},
+            h('div',{style:{fontSize:13,fontWeight:600,color:'#818cf8',marginBottom:10}},'編輯策略'),
+            h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}},
+              h('div',null,
+                h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},'策略名稱'),
+                h('input',{className:'inp',style:{width:'100%'},value:facForm.name,onChange:function(e){setFacForm(Object.assign({},facForm,{name:e.target.value}));}})
+              ),
+              h('div',null,
+                h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},'策略類型'),
+                h('select',{className:'inp',style:{width:'100%'},value:facForm.type,onChange:function(e){setFacForm(Object.assign({},facForm,{type:e.target.value}));}},
+                  [{v:'growth',l:'成長股'},{v:'income',l:'高股息'},{v:'passive',l:'被動投資'},{v:'value',l:'價值投資'},{v:'momentum',l:'動能策略'}].map(function(o){return h('option',{key:o.v,value:o.v},o.l);})
+                )
+              )
+            ),
+            h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}},
+              [{label:'ROE 最低（%）',key:'roe_min'},{label:'PE 最高（x）',key:'pe_max'},
+               {label:'殖利率最低（%）',key:'yield_min'},{label:'營收成長（%）',key:'rev_growth'}].map(function(f){
+                return h('div',{key:f.key},
+                  h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},f.label),
+                  h('input',{className:'inp',style:{width:'100%'},type:'number',value:facForm.conditions[f.key]||0,
+                    onChange:function(e){setFacForm(Object.assign({},facForm,{conditions:Object.assign({},facForm.conditions,{[f.key]:+e.target.value})}));}})
+                );
+              })
+            ),
+            h('div',{style:{marginBottom:8}},
+              h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},'策略備註'),
+              h('textarea',{className:'note',style:{minHeight:50},value:facForm.note||'',onChange:function(e){setFacForm(Object.assign({},facForm,{note:e.target.value}));}})
+            ),
+            h('div',{style:{display:'flex',gap:7}},
+              h('button',{className:'btn bv6',onClick:saveFactory},'儲存'),
+              h('button',{className:'btn bgho',onClick:function(){setFacEdit(false);}},'取消')
+            )
+          )
+        )
+      )
+    );
+  }
+
+  var content;
+  if(tab==='watchlist') content=renderWatchlist();
+  else if(tab==='detail') content=renderDetail();
+  else if(tab==='compare') content=renderCompare();
+  else if(tab==='backtest') content=renderBacktest();
+  else if(tab==='filter') content=renderFilter();
+  else if(tab==='portfolio') content=renderPortfolio();
+  else if(tab==='etf') content=renderETF();
+  else if(tab==='risk') content=renderRisk();
+  else if(tab==='advisor') content=renderAdvisor();
+  else if(tab==='wealth') content=renderWealth();
+  else if(tab==='factory') content=renderFactory();
+  else content=h('div',{className:'empty'},'功能開發中...');
+
+  return h('div',{style:{minHeight:'100vh',background:'#080d08'}},
+    h('div',{className:'hdr'},
+      h('div',{style:{flex:1}},
+        h('div',{className:'hdr-logo'},'台股分析儀 V5'),
+        h('div',{className:'hdr-sub'},'V6 AI 財富管理平台 · 不構成投資建議')
+      ),
+      h('div',{style:{display:'flex',gap:5}},
+        h('input',{className:'inp',style:{width:80},placeholder:searching?'搜尋中...':'代號/名稱',value:sv,
+          onChange:function(e){setSv(e.target.value);},
+          onKeyDown:function(e){if(e.key==='Enter')handleSearch();}}),
+        h('button',{className:'btn bpri',style:{fontSize:11},onClick:handleSearch},'查')
+      )
+    ),
+    h('div',{className:'tabs'},
+      TABS.map(function(t){
+        return h('button',{key:t.id,className:'tab'+(tab===t.id?' on':''),onClick:function(){setTab(t.id);}},
+          t.label,
+          t.n?h('span',{className:'tbadge'},t.n):null,
+          t.v6?h('span',{className:'v6b'},'V6'):null
+        );
+      })
+    ),
+    h('div',{className:'body'},
+      content,
+      h('div',{className:'disc'},'本工具為個人研究輔助，所有資料僅供參考，不構成投資建議。股票資料來自 FinMind，可能有延遲。')
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+} // end initApp
+</script>
+</body>
+</html>
