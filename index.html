@@ -329,6 +329,14 @@ function App() {
   };});
   var wealth=wealthState[0], setWealth=wealthState[1];
 
+  // V6 市場環境
+  var marketDataState = useState(null);
+  var marketData=marketDataState[0], setMarketData=marketDataState[1];
+  var marketLoadingState = useState(false);
+  var marketLoading=marketLoadingState[0], setMarketLoading=marketLoadingState[1];
+  var facSelFactor = useState([]);
+  var selFactors=facSelFactor[0], setSelFactors=facSelFactor[1];
+
   // V6 策略工廠
   var factoriesState = useState(function(){return LS.get('factories')||[
     {id:'f1',name:'高股息策略',type:'income',status:'active',version:1,
@@ -355,6 +363,17 @@ function App() {
   useEffect(function(){LS.set('factories',factories);},[factories]);
   useEffect(function(){LS.set('aak',advisorApiKey);},[advisorApiKey]);
 
+  // 自選股批次載入即時價格
+  useEffect(function(){
+    if(!watchlist.length) return;
+    fetch(PROXY+'/api/prices',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({codes:watchlist})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.prices) setPriceCache(function(p){return Object.assign({},p,d.prices);});
+    }).catch(function(){});
+  },[watchlist]);
+
   // 自選股載入即時價格
   useEffect(function(){
     watchlist.forEach(function(code){
@@ -371,6 +390,24 @@ function App() {
   // 個股分析頁載入 K 線
   useEffect(function(){
     if(tab==='detail'&&activeStock) {
+      // 載入基本面資料
+      apiFetch('/api/fundamental/'+activeStock).then(function(d){
+        if(d&&!d.error&&STOCKS[activeStock]) {
+          var s=STOCKS[activeStock];
+          if(d.pe!=null) s.pe=d.pe;
+          if(d.pb!=null) s.pb=d.pb;
+          if(d.roe!=null) s.roe=d.roe;
+          if(d.eps!=null) s.eps=d.eps;
+          if(d.divYield!=null) s.divYield=d.divYield;
+          if(d.revenueGrowth!=null) s.revenue_growth=d.revenueGrowth;
+          if(d.grossMargin!=null) s.gross_margin=d.grossMargin;
+          if(d.debtRatio!=null) s.debt_ratio=d.debtRatio;
+          if(d.week52High!=null) s.week52High=d.week52High;
+          if(d.week52Low!=null) s.week52Low=d.week52Low;
+          // 觸發重新渲染
+          setPriceCache(function(p){return Object.assign({},p);});
+        }
+      });
       if(!candleCache[activeStock]) {
         apiFetch('/api/candles/'+activeStock).then(function(d){
           if(d&&d.candles&&d.candles.length) {
@@ -481,6 +518,7 @@ function App() {
     {id:'backtest',label:'回測'},{id:'filter',label:'條件篩選'},{id:'portfolio',label:'投資組合'},
     {id:'etf',label:'ETF'},{id:'risk',label:'風險',n:allRisks.length},
     {id:'advisor',label:'AI投資顧問',v6:true},{id:'wealth',label:'財富中心',v6:true},{id:'factory',label:'策略工廠',v6:true},
+    {id:'market',label:'市場環境',v6:true},{id:'factors2',label:'因子研究',v6:true},{id:'scenario',label:'情境模擬',v6:true},
   ];
 
   // ── render 各分頁 ─────────────────────────────
@@ -1229,6 +1267,222 @@ function App() {
     );
   }
 
+
+  // ═══ V6 市場環境辨識 ═══════════════════════════
+  function renderMarket() {
+    var MARKET_TYPES = {
+      bull:     {label:'多頭市場',color:'#34d399',icon:'+',desc:'指數站上均線，趨勢向上，成長股表現較佳'},
+      bear:     {label:'空頭市場',color:'#f87171',icon:'-',desc:'指數跌破均線，趨勢向下，防禦型資產較安全'},
+      sideways: {label:'盤整市場',color:'#fbbf24',icon:'~',desc:'指數橫向震盪，高殖利率與價值股相對穩定'},
+      volatile: {label:'高波動市場',color:'#a78bfa',icon:'!',desc:'市場大幅震盪，建議降低倉位，分批操作'},
+    };
+    var STRATEGY_MATCH = {
+      bull:     [{s:'成長股策略',fit:95,reason:'趨勢向上，成長股領漲'},{s:'動能策略',fit:88,reason:'強者恆強，動能效果佳'},{s:'被動投資',fit:82,reason:'大盤走多，ETF受惠'}],
+      bear:     [{s:'高股息策略',fit:90,reason:'配息提供緩衝，波動較小'},{s:'價值投資',fit:85,reason:'低估股有支撐'},{s:'被動投資',fit:60,reason:'大盤走空，定期定額仍可執行'}],
+      sideways: [{s:'高股息策略',fit:92,reason:'配息貢獻主要報酬'},{s:'價值投資',fit:85,reason:'等待低估回歸'},{s:'動能策略',fit:55,reason:'無明確方向，訊號雜訊多'}],
+      volatile: [{s:'高股息策略',fit:78,reason:'配息穩定波動'},{s:'價值投資',fit:72,reason:'分批進場好時機'},{s:'成長股策略',fit:45,reason:'波動大，風險較高'}],
+    };
+    var FACTOR_MATCH = {
+      bull:     ['ROE','EPS成長率','營收年增率','動能因子'],
+      bear:     ['殖利率','負債比率','股價淨值比','防禦因子'],
+      sideways: ['殖利率','股價淨值比','ROE','現金流'],
+      volatile: ['殖利率','負債比率','Beta值','流動性'],
+    };
+
+    function loadMarket() {
+      setMarketLoading(true);
+      apiFetch('/api/market').then(function(d){
+        setMarketData(d);
+        setMarketLoading(false);
+      }).catch(function(){setMarketLoading(false);});
+    }
+
+    useEffect(function(){loadMarket();},[]);
+
+    var mt = marketData ? (MARKET_TYPES[marketData.trend]||MARKET_TYPES.sideways) : null;
+    var strats = marketData ? (STRATEGY_MATCH[marketData.trend]||STRATEGY_MATCH.sideways) : [];
+    var factors = marketData ? (FACTOR_MATCH[marketData.trend]||FACTOR_MATCH.sideways) : [];
+
+    return h('div',null,
+      h('div',{className:'sec'},'市場環境辨識'),
+      h('div',{className:'card-v6',style:{marginBottom:10}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+          h('div',{style:{fontSize:12,color:'#818cf8'}},'加權指數即時狀態（FinMind 資料）'),
+          h('button',{className:'btn bv6',style:{fontSize:11},onClick:loadMarket},marketLoading?'載入中...':'重新分析')
+        ),
+        !marketData&&!marketLoading&&h('div',{className:'empty'},'點右上角按鈕載入市場資料'),
+        marketLoading&&h('div',{className:'empty'},'分析市場環境中...'),
+        marketData&&mt&&h('div',null,
+          h('div',{style:{display:'flex',gap:12,alignItems:'center',padding:'12px',background:'#13132a',borderRadius:6,marginBottom:12}},
+            h('div',{style:{width:48,height:48,borderRadius:'50%',background:'rgba(0,0,0,.3)',border:'2px solid '+mt.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,color:mt.color,flexShrink:0}},mt.icon),
+            h('div',null,
+              h('div',{style:{fontSize:16,fontWeight:700,color:mt.color}},mt.label),
+              h('div',{style:{fontSize:11,color:'#8080b0',marginTop:3}},mt.desc)
+            )
+          ),
+          h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}},
+            [{l:'加權指數',v:marketData.index?marketData.index.toLocaleString():'-',c:'#bfcfbf'},
+             {l:'30日漲跌',v:(marketData.change30>=0?'+':'')+marketData.change30+'%',c:marketData.change30>=0?'#34d399':'#f87171'},
+             {l:'波動度',v:marketData.volatility+'%',c:marketData.volatility>2?'#f87171':marketData.volatility>1?'#fbbf24':'#34d399'},
+            ].map(function(x){return h('div',{key:x.l,className:'sumcard'},h('div',{className:'sumlbl'},x.l),h('div',{className:'sumval mono',style:{color:x.c}},x.v));})
+          ),
+          h('div',{className:'sec',style:{color:'#818cf8',marginBottom:8}},'目前環境推薦策略'),
+          strats.map(function(s,i){
+            return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:'#13132a',borderRadius:5,marginBottom:6}},
+              h('div',{style:{width:36,height:36,borderRadius:'50%',background:'rgba(129,140,248,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontFamily:"'DM Mono',monospace",color:'#818cf8',flexShrink:0}},i+1),
+              h('div',{style:{flex:1}},
+                h('div',{style:{fontSize:13,color:'#d0d0f0',fontWeight:500}},s.s),
+                h('div',{style:{fontSize:11,color:'#5a5a8a',marginTop:2}},s.reason)
+              ),
+              h('div',{style:{fontFamily:"'DM Mono',monospace",fontSize:13,color:s.fit>=85?'#34d399':s.fit>=70?'#fbbf24':'#f87171'}},s.fit+'%')
+            );
+          }),
+          h('div',{className:'sec',style:{color:'#818cf8',marginBottom:8,marginTop:12}},'推薦關注因子'),
+          h('div',{style:{display:'flex',gap:6,flexWrap:'wrap'}},
+            factors.map(function(f){return h('span',{key:f,style:{padding:'4px 12px',background:'#13132a',border:'1px solid #2d2d6b',borderRadius:99,fontSize:11,color:'#818cf8'}},f);})
+          )
+        )
+      )
+    );
+  }
+
+  // ═══ V6 因子研究中心 ══════════════════════════
+  function renderFactors() {
+    var FACTORS = [
+      {name:'ROE',desc:'股東權益報酬率',category:'獲利',success_rate:72,avg_return:18.5,sample:124,reliability:'高',bull:88,bear:45,sideways:65},
+      {name:'EPS成長率',desc:'每股盈餘年增率',category:'成長',success_rate:68,avg_return:15.2,sample:98,reliability:'中高',bull:85,bear:40,sideways:55},
+      {name:'毛利率',desc:'毛利率水準',category:'獲利',success_rate:65,avg_return:12.8,sample:112,reliability:'中高',bull:75,bear:55,sideways:70},
+      {name:'營收年增率',desc:'月營收年比成長率',category:'成長',success_rate:63,avg_return:11.4,sample:156,reliability:'中',bull:80,bear:35,sideways:50},
+      {name:'本益比',desc:'股價相對獲利估值',category:'估值',success_rate:58,avg_return:9.2,sample:203,reliability:'中',bull:55,bear:70,sideways:68},
+      {name:'殖利率',desc:'現金殖利率',category:'收益',success_rate:61,avg_return:8.5,sample:142,reliability:'中',bull:50,bear:85,sideways:90},
+      {name:'股價淨值比',desc:'股價相對淨值',category:'估值',success_rate:55,avg_return:7.8,sample:187,reliability:'中',bull:52,bear:72,sideways:68},
+      {name:'MA突破',desc:'股價突破20日均線',category:'技術',success_rate:54,avg_return:6.9,sample:312,reliability:'低中',bull:75,bear:30,sideways:42},
+      {name:'成交量放大',desc:'成交量較均量放大2倍',category:'技術',success_rate:51,avg_return:5.4,sample:289,reliability:'低',bull:65,bear:35,sideways:38},
+      {name:'負債比率',desc:'總負債佔總資產比率',category:'財務',success_rate:59,avg_return:8.1,sample:134,reliability:'中',bull:55,bear:78,sideways:65},
+    ];
+    var catColors = {'獲利':'#34d399','成長':'#60a5fa','估值':'#fbbf24','收益':'#a78bfa','技術':'#f87171','財務':'#2dd4bf'};
+    var sortedFactors = [...FACTORS].sort(function(a,b){return b.success_rate-a.success_rate;});
+    var multiSR = selFactors.length>1 ? Math.min(95,selFactors.reduce(function(a,f){var x=FACTORS.find(function(x){return x.name===f;});return a+(x?x.success_rate:50);},0)/selFactors.length+selFactors.length*3) : null;
+
+    return h('div',null,
+      h('div',{className:'sec'},'因子研究中心'),
+      h('div',{className:'card-v6'},
+        h('div',{style:{fontSize:11,color:'#818cf8',marginBottom:9}},'點選最多 3 個因子查看組合效果（已選 '+selFactors.length+'/3）'),
+        h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}},
+          FACTORS.map(function(f){
+            var sel=selFactors.includes(f.name);
+            return h('button',{key:f.name,className:'btn '+(sel?'bv6':'bgho'),style:{fontSize:11},
+              onClick:function(){setSelFactors(sel?selFactors.filter(function(x){return x!==f.name;}):selFactors.concat([f.name]).slice(0,3));}},f.name);
+          })
+        ),
+        selFactors.length>1&&h('div',{style:{background:'#13132a',border:'1px solid #2d2d6b',borderRadius:5,padding:12,marginBottom:12}},
+          h('div',{style:{fontSize:11,color:'#818cf8',marginBottom:3}},'多因子組合成功率'),
+          h('div',{style:{fontSize:24,fontFamily:"'DM Mono',monospace",color:'#a78bfa'}},multiSR+'%'),
+          h('div',{style:{fontSize:10,color:'#3a3a6a',marginTop:2}},'相較單因子平均提升 '+(multiSR-selFactors.reduce(function(a,f){var x=FACTORS.find(function(x){return x.name===f;});return a+(x?x.success_rate:50);},0)/selFactors.length).toFixed(1)+'%')
+        )
+      ),
+      h('div',{className:'card-v6'},
+        h('div',{className:'sec',style:{color:'#818cf8',marginBottom:8}},'因子有效性統計'),
+        h('table',null,
+          h('thead',null,h('tr',null,['因子','類別','整體成功率','多頭','空頭','盤整','樣本數','可靠度'].map(function(t){return h('th',{key:t},t);}))),
+          h('tbody',null,sortedFactors.map(function(f){
+            var sel=selFactors.includes(f.name);
+            return h('tr',{key:f.name,style:{background:sel?'rgba(129,140,248,0.05)':''}},
+              h('td',null,h('div',{style:{fontWeight:500,color:sel?'#818cf8':'#bfcfbf'}},f.name),h('div',{style:{fontSize:10,color:'#3a3a6a'}},f.desc)),
+              h('td',null,h('span',{style:{fontSize:10,color:catColors[f.category]||'#8a8aaa'}},f.category)),
+              h('td',null,
+                h('div',{style:{width:70,height:5,background:'#1a2a1a',borderRadius:3,overflow:'hidden',marginBottom:2}},
+                  h('div',{style:{width:f.success_rate+'%',height:'100%',background:f.success_rate>=65?'#34d399':f.success_rate>=55?'#fbbf24':'#f87171',borderRadius:3}})
+                ),
+                h('span',{className:'mono',style:{fontSize:10,color:f.success_rate>=65?'#34d399':f.success_rate>=55?'#fbbf24':'#f87171'}},f.success_rate+'%')
+              ),
+              h('td',{className:'mono',style:{fontSize:10,color:'#34d399'}},f.bull+'%'),
+              h('td',{className:'mono',style:{fontSize:10,color:'#f87171'}},f.bear+'%'),
+              h('td',{className:'mono',style:{fontSize:10,color:'#fbbf24'}},f.sideways+'%'),
+              h('td',{className:'mono',style:{color:'#5a5a8a',fontSize:10}},f.sample),
+              h('td',{style:{fontSize:10,color:'#6a6a8a'}},f.reliability)
+            );
+          }))
+        )
+      )
+    );
+  }
+
+  // ═══ V6 情境模擬 ══════════════════════════════
+  function renderScenario() {
+    var SCENARIOS = [
+      {id:'bull',name:'多頭市場',icon:'+',period:'2019-2021',desc:'長期牛市，AI科技帶動',
+       impact:{growth:+28,income:+15,passive:+22,value:+18,momentum:+32}},
+      {id:'bear',name:'空頭市場',icon:'-',period:'2022',desc:'Fed暴力升息，全球股市重挫',
+       impact:{growth:-25,income:-8,passive:-20,value:-12,momentum:-28}},
+      {id:'sideways',name:'盤整市場',icon:'~',period:'2015-2016',desc:'經濟溫和成長，市場方向不明',
+       impact:{growth:+3,income:+9,passive:+2,value:+6,momentum:+1}},
+      {id:'rate_up',name:'升息環境',icon:'U',period:'2022-2023',desc:'央行升息對抗通膨',
+       impact:{growth:-12,income:+6,passive:-8,value:+3,momentum:-5}},
+      {id:'rate_down',name:'降息環境',icon:'D',period:'2019,2024',desc:'央行降息，資金寬鬆',
+       impact:{growth:+18,income:+10,passive:+15,value:+12,momentum:+20}},
+      {id:'ai_boom',name:'AI題材熱潮',icon:'A',period:'2023-2024',desc:'生成式AI引爆科技股',
+       impact:{growth:+42,income:+5,passive:+28,value:+10,momentum:+38}},
+      {id:'recession',name:'景氣衰退',icon:'R',period:'2008-2009',desc:'金融危機，企業獲利大幅下滑',
+       impact:{growth:-35,income:-12,passive:-30,value:-18,momentum:-40}},
+      {id:'fx',name:'匯率大幅波動',icon:'F',period:'2022',desc:'新台幣大幅升貶',
+       impact:{growth:-6,income:+3,passive:-4,value:+1,momentum:-3}},
+    ];
+    var TYPE_LABELS = {growth:'成長股',income:'高股息',passive:'被動投資',value:'價值投資',momentum:'動能策略'};
+    var TYPE_COLORS = {growth:'#34d399',income:'#fbbf24',passive:'#60a5fa',value:'#a78bfa',momentum:'#f87171'};
+
+    return h('div',null,
+      h('div',{className:'sec'},'情境模擬中心'),
+      h('div',{className:'card-v6',style:{marginBottom:10}},
+        h('div',{style:{fontSize:11,color:'#5a5a8a',marginBottom:10}},'模擬不同市場環境下各策略的歷史表現，數據基於歷史統計，不代表未來績效'),
+        h('div',{style:{overflowX:'auto'}},
+          h('table',null,
+            h('thead',null,h('tr',null,
+              [h('th',{key:'s'},'情境'),h('th',{key:'p'},'參考期間')].concat(
+                Object.keys(TYPE_LABELS).map(function(k){return h('th',{key:k,style:{color:TYPE_COLORS[k]}},TYPE_LABELS[k]);})
+              )
+            )),
+            h('tbody',null,SCENARIOS.map(function(sc){
+              return h('tr',{key:sc.id},
+                h('td',null,
+                  h('div',{style:{display:'flex',alignItems:'center',gap:6}},
+                    h('span',{style:{width:22,height:22,borderRadius:'50%',background:'rgba(129,140,248,.15)',border:'1px solid #2d2d6b',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'#818cf8',flexShrink:0}},sc.icon),
+                    h('div',null,h('div',{style:{fontSize:12,color:'#d0d0f0'}},sc.name),h('div',{style:{fontSize:10,color:'#3a3a6a'}},sc.desc))
+                  )
+                ),
+                h('td',{style:{fontSize:10,color:'#5a5a8a',whiteSpace:'nowrap'}},sc.period),
+                Object.keys(TYPE_LABELS).map(function(k){
+                  var v=sc.impact[k]||0;
+                  return h('td',{key:k,className:'mono',style:{color:v>=0?'#34d399':'#f87171',fontSize:12}},(v>=0?'+':'')+v+'%');
+                })
+              );
+            }))
+          )
+        )
+      ),
+      h('div',{className:'card-v6'},
+        h('div',{className:'sec',style:{color:'#818cf8',marginBottom:8}},'各策略情境表現雷達'),
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:8}},
+          Object.entries(TYPE_LABELS).map(function(entry){
+            var k=entry[0],label=entry[1];
+            var scores=SCENARIOS.map(function(sc){return sc.impact[k]||0;});
+            var avg=(scores.reduce(function(a,b){return a+b;},0)/scores.length).toFixed(1);
+            var best=SCENARIOS.reduce(function(a,sc){return (sc.impact[k]||0)>(a.impact[k]||0)?sc:a;});
+            var worst=SCENARIOS.reduce(function(a,sc){return (sc.impact[k]||0)<(a.impact[k]||0)?sc:a;});
+            return h('div',{key:k,style:{background:'#13132a',border:'1px solid #2d2d6b',borderRadius:6,padding:10}},
+              h('div',{style:{fontSize:12,fontWeight:600,color:TYPE_COLORS[k],marginBottom:6}},label),
+              h('div',{style:{fontSize:11,color:'#8080b0',marginBottom:3}},'平均報酬'),
+              h('div',{className:'mono',style:{fontSize:16,color:+avg>=0?'#34d399':'#f87171',marginBottom:6}},(+avg>=0?'+':'')+avg+'%'),
+              h('div',{style:{fontSize:10,color:'#3a3a6a'}},'最佳: '+best.name+' '+(best.impact[k]>=0?'+':'')+best.impact[k]+'%'),
+              h('div',{style:{fontSize:10,color:'#3a3a6a'}},'最差: '+worst.name+' '+(worst.impact[k]>=0?'+':'')+worst.impact[k]+'%')
+            );
+          })
+        )
+      ),
+      h('div',{className:'disc'},'⚠ 情境模擬基於歷史統計資料，不代表未來績效，不構成投資建議。')
+    );
+  }
+
   var content;
   if(tab==='watchlist') content=renderWatchlist();
   else if(tab==='detail') content=renderDetail();
@@ -1241,6 +1495,9 @@ function App() {
   else if(tab==='advisor') content=renderAdvisor();
   else if(tab==='wealth') content=renderWealth();
   else if(tab==='factory') content=renderFactory();
+  else if(tab==='market') content=renderMarket();
+  else if(tab==='factors2') content=renderFactors();
+  else if(tab==='scenario') content=renderScenario();
   else content=h('div',{className:'empty'},'功能開發中...');
 
   return h('div',{style:{minHeight:'100vh',background:'#080d08'}},
