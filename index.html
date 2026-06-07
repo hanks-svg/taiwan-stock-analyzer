@@ -335,6 +335,17 @@ function App() {
   var marketLoadingState = useState(false);
   var marketLoading=marketLoadingState[0], setMarketLoading=marketLoadingState[1];
   var facSelFactor = useState([]);
+  // V6 通知設定
+  var notifyEmailState = useState(function(){return LS.get('notify_email')||'';});
+  var notifyEmail=notifyEmailState[0], setNotifyEmail=notifyEmailState[1];
+  var notifyDailyState = useState(function(){return LS.get('notify_daily')!==false;});
+  var notifyDaily=notifyDailyState[0], setNotifyDaily=notifyDailyState[1];
+  var alertsState = useState(function(){return LS.get('alerts')||[];});
+  var alerts=alertsState[0], setAlerts=alertsState[1];
+  var alertFormState = useState({code:'2330',targetPrice:'',direction:'above'});
+  var alertForm=alertFormState[0], setAlertForm=alertFormState[1];
+  var notifyStatusState = useState('');
+  var notifyStatus=notifyStatusState[0], setNotifyStatus=notifyStatusState[1];
   var selFactors=facSelFactor[0], setSelFactors=facSelFactor[1];
 
   // V6 策略工廠
@@ -362,6 +373,9 @@ function App() {
   useEffect(function(){LS.set('wealth',wealth);},[wealth]);
   useEffect(function(){LS.set('factories',factories);},[factories]);
   useEffect(function(){LS.set('aak',advisorApiKey);},[advisorApiKey]);
+  useEffect(function(){LS.set('notify_email',notifyEmail);},[notifyEmail]);
+  useEffect(function(){LS.set('notify_daily',notifyDaily);},[notifyDaily]);
+  useEffect(function(){LS.set('alerts',alerts);},[alerts]);
 
   // 自選股批次載入即時價格
   useEffect(function(){
@@ -519,6 +533,7 @@ function App() {
     {id:'etf',label:'ETF'},{id:'risk',label:'風險',n:allRisks.length},
     {id:'advisor',label:'AI投資顧問',v6:true},{id:'wealth',label:'財富中心',v6:true},{id:'factory',label:'策略工廠',v6:true},
     {id:'market',label:'市場環境',v6:true},{id:'factors2',label:'因子研究',v6:true},{id:'scenario',label:'情境模擬',v6:true},
+    {id:'notify',label:'通知設定',v6:true},
   ];
 
   // ── render 各分頁 ─────────────────────────────
@@ -1483,6 +1498,142 @@ function App() {
     );
   }
 
+
+  // ═══ V6 通知設定 ══════════════════════════════
+  function renderNotify() {
+    var userId = 'user_' + (notifyEmail.replace(/[^a-zA-Z0-9]/g,'_')||'default');
+
+    function saveSettings() {
+      if(!notifyEmail){setNotifyStatus('error:請填寫 Email');return;}
+      setNotifyStatus('saving');
+      fetch(PROXY+'/api/notify/settings',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({userId:userId,email:notifyEmail,watchlist:watchlist,alerts:alerts,dailySummary:notifyDaily})
+      }).then(function(r){return r.json();}).then(function(d){
+        setNotifyStatus(d.ok?'saved':'error:'+d.error);
+        setTimeout(function(){setNotifyStatus('');},3000);
+      }).catch(function(){setNotifyStatus('error:連線失敗');});
+    }
+
+    function sendTest() {
+      if(!notifyEmail){setNotifyStatus('error:請填寫 Email');return;}
+      setNotifyStatus('testing');
+      fetch(PROXY+'/api/notify/test',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:notifyEmail})
+      }).then(function(r){return r.json();}).then(function(d){
+        setNotifyStatus(d.ok?'test_ok':'error:'+d.error);
+        setTimeout(function(){setNotifyStatus('');},4000);
+      }).catch(function(){setNotifyStatus('error:連線失敗');});
+    }
+
+    function addAlert() {
+      if(!alertForm.code||!alertForm.targetPrice)return;
+      var newAlert={id:Date.now(),code:alertForm.code.toUpperCase(),targetPrice:+alertForm.targetPrice,direction:alertForm.direction,triggered:false,created:new Date().toLocaleDateString('zh-TW')};
+      setAlerts(alerts.concat([newAlert]));
+      setAlertForm({code:'2330',targetPrice:'',direction:'above'});
+    }
+
+    function removeAlert(id){setAlerts(alerts.filter(function(a){return a.id!==id;}));}
+    function resetAlert(id){setAlerts(alerts.map(function(a){return a.id===id?Object.assign({},a,{triggered:false}):a;}));}
+
+    var statusMsg = {
+      saving:'儲存中...',
+      saved:'設定已儲存！',
+      testing:'發送測試信中...',
+      test_ok:'測試信已發送，請檢查信箱！',
+    };
+
+    return h('div',null,
+      h('div',{className:'sec'},'Email 通知設定'),
+
+      // Email 設定
+      h('div',{className:'card-v6'},
+        h('div',{style:{fontSize:12,color:'#818cf8',marginBottom:10,padding:'8px 12px',background:'#13132a',borderRadius:5,border:'1px solid #2d2d6b'}},
+          '設定 Email 後，系統會自動在每個交易日下午 2 點發送收盤摘要，以及股價到達目標時發送提醒。'
+        ),
+        h('div',{style:{marginBottom:10}},
+          h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:4}},'收件 Email'),
+          h('input',{className:'inp',style:{width:'100%'},type:'email',placeholder:'your@email.com',
+            value:notifyEmail,onChange:function(e){setNotifyEmail(e.target.value);}})
+        ),
+        h('div',{style:{marginBottom:12}},
+          h('label',{style:{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}},
+            h('input',{type:'checkbox',checked:notifyDaily,onChange:function(e){setNotifyDaily(e.target.checked);}}),
+            h('div',null,
+              h('div',{style:{fontSize:12,color:'#b0b0d0'}},'每日收盤摘要'),
+              h('div',{style:{fontSize:10,color:'#5a5a8a'}},'每個交易日下午 2:00 自動發送自選股收盤價格')
+            )
+          )
+        ),
+        h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}},
+          h('button',{className:'btn bv6',onClick:saveSettings},'儲存設定'),
+          h('button',{className:'btn bgho',style:{fontSize:11},onClick:sendTest},'發送測試信'),
+          notifyStatus&&h('span',{style:{fontSize:11,color:notifyStatus.startsWith('error')?'#f87171':notifyStatus==='saved'||notifyStatus==='test_ok'?'#34d399':'#fbbf24'}},
+            notifyStatus.startsWith('error')?notifyStatus.replace('error:',''):statusMsg[notifyStatus]||notifyStatus
+          )
+        )
+      ),
+
+      // 目標價警示
+      h('div',{className:'card-v6'},
+        h('div',{className:'sec',style:{color:'#818cf8',marginBottom:10}},'目標價警示'),
+        h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end',marginBottom:12}},
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},'股票代號'),
+            h('input',{className:'inp',style:{width:80},placeholder:'2330',value:alertForm.code,
+              onChange:function(e){setAlertForm(Object.assign({},alertForm,{code:e.target.value}));}})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},'目標價'),
+            h('input',{className:'inp',style:{width:90},type:'number',placeholder:'900',value:alertForm.targetPrice,
+              onChange:function(e){setAlertForm(Object.assign({},alertForm,{targetPrice:e.target.value}));}})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:10,color:'#5a5a8a',marginBottom:3}},'條件'),
+            h('select',{className:'inp',value:alertForm.direction,onChange:function(e){setAlertForm(Object.assign({},alertForm,{direction:e.target.value}));}},
+              h('option',{value:'above'},'突破（漲超過）'),
+              h('option',{value:'below'},'跌破（跌低於）')
+            )
+          ),
+          h('button',{className:'btn bv6',onClick:addAlert},'+ 新增警示')
+        ),
+        alerts.length===0?h('div',{className:'empty'},'尚未設定任何目標價警示'):
+        alerts.map(function(a){
+          return h('div',{key:a.id,style:{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',background:a.triggered?'#1a1a0a':'#13132a',borderRadius:5,marginBottom:6,border:'1px solid '+(a.triggered?'#3a3a10':'#2d2d6b')}},
+            h('div',{style:{width:38,height:38,borderRadius:'50%',background:'rgba(0,0,0,.3)',border:'2px solid '+(a.direction==='above'?'#34d399':'#f87171'),display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:a.direction==='above'?'#34d399':'#f87171',flexShrink:0,fontFamily:"'DM Mono',monospace"}},a.direction==='above'?'+':'-'),
+            h('div',{style:{flex:1}},
+              h('div',{style:{display:'flex',gap:6,alignItems:'center'}},
+                h('span',{style:{fontSize:13,fontWeight:600,color:'#d0d0f0'}},a.code),
+                h('span',{style:{fontSize:11,color:a.direction==='above'?'#34d399':'#f87171'}},a.direction==='above'?'突破':'跌破'),
+                h('span',{className:'mono',style:{fontSize:13,color:'#bfcfbf'}},a.targetPrice)
+              ),
+              h('div',{style:{fontSize:10,color:'#3a3a6a',marginTop:2}},
+                '建立 '+a.created+(a.triggered?' · 已觸發':'')
+              )
+            ),
+            h('div',{style:{display:'flex',gap:5}},
+              a.triggered&&h('button',{className:'btn bgho',style:{fontSize:10,padding:'2px 7px'},onClick:function(){resetAlert(a.id);}},'重置'),
+              h('button',{className:'btn bdgr',style:{fontSize:10,padding:'2px 5px'},onClick:function(){removeAlert(a.id);}},'x')
+            )
+          );
+        })
+      ),
+
+      // 說明
+      h('div',{style:{background:'#09090f',border:'1px solid #1e1e3a',borderRadius:6,padding:12,fontSize:11,color:'#5a5a8a',lineHeight:1.8}},
+        h('div',{style:{color:'#818cf8',fontWeight:500,marginBottom:6}},'使用說明'),
+        h('div',null,'1. 填寫收件 Email，點「儲存設定」'),
+        h('div',null,'2. 點「發送測試信」確認 Email 正常收到'),
+        h('div',null,'3. 開啟「每日收盤摘要」，每個交易日下午 2 點自動收信'),
+        h('div',null,'4. 設定目標價警示，股價到達時自動發通知'),
+        h('div',{style:{marginTop:6,color:'#3a3a6a'}},'⚠ 注意：Render 免費方案閒置會睡眠，定時通知可能不穩定。如需穩定通知建議升級 Render 方案。')
+      )
+    );
+  }
+
   var content;
   if(tab==='watchlist') content=renderWatchlist();
   else if(tab==='detail') content=renderDetail();
@@ -1495,6 +1646,7 @@ function App() {
   else if(tab==='advisor') content=renderAdvisor();
   else if(tab==='wealth') content=renderWealth();
   else if(tab==='factory') content=renderFactory();
+  else if(tab==='notify') content=renderNotify();
   else if(tab==='market') content=renderMarket();
   else if(tab==='factors2') content=renderFactors();
   else if(tab==='scenario') content=renderScenario();
